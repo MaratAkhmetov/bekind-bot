@@ -1,3 +1,9 @@
 python-telegram-bot==20.7
 mistralai==0.4.2
 python-dotenv==1.0.1
+langgraph
+langchain
+langchain-core
+langchain-community
+langchain-openai
+tavily-python
