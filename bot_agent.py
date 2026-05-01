@@ -10,7 +10,7 @@ from tavily import TavilyClient
 # ======================
 load_dotenv()
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN_2")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
