@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-from langchain_community.chat_models import ChatMistralAI
+from mistralai.client import MistralClient  # <<-- Changed import, use official Mistral SDK client
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 from langgraph.graph import StateGraph, END
@@ -40,7 +40,7 @@ tavily_tool = TavilySearchResults(max_results=3)
 # NODES
 # ======================
 
-llm = ChatMistralAI(model="mistral-small-latest", temperature=0, api_key=MISTRAL_API_KEY)
+mistral_client = MistralClient(api_key=MISTRAL_API_KEY)
 
 def agent_node(state: AgentState):
     user_input = state["messages"][-1]
@@ -77,7 +77,13 @@ FINAL: ...
 """
 
     try:
-        response = llm.invoke(prompt).content
+        # Use MistralClient directly
+        response_obj = mistral_client.chat(
+            model="mistral-small-latest",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        # The field structure is response_obj.choices[0].message.content
+        response = response_obj.choices[0].message.content
     except Exception as e:
         return {
             "messages": state["messages"] + [f"FINAL: {str(e)}"],
