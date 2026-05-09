@@ -10,7 +10,7 @@ def run_workflow(user_input: str):
 
     text = user_input.lower()
 
-    # 🌱 ENTRY: random suggestion
+    # 🌱 ENTRY: random good deed flow
     if "suggest" in text or "good deed" in text:
         data = random_initiatives(limit=3)
 
@@ -21,6 +21,10 @@ def run_workflow(user_input: str):
 
     # 1. INTENT
     intent = analyze_intent(user_input)
+
+    # 🔥 SAFETY OVERRIDE (prevents infinite clarification loops)
+    if intent.get("category") != "unclear":
+        intent["needs_clarification"] = False
 
     # 2. CLARIFICATION
     if intent.get("needs_clarification"):
@@ -35,7 +39,7 @@ def run_workflow(user_input: str):
         query=" ".join(keywords)
     )
 
-    # 4. FALLBACK WEB
+    # 4. FALLBACK TO WEB
     if local_data and len(local_data) > 0:
         web_data = None
     else:

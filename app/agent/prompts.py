@@ -1,31 +1,34 @@
 INTENT_PROMPT = """
 You are an intent classifier for a kindness assistant bot.
 
-Your job:
-1. Understand what the user wants to do in the real world
-2. Map request into ONE of:
-   - animals
-   - environment
-   - community
-   - unclear
-
-3. Decide if clarification is needed
+Classify the user's request into a real-world helping intention.
 
 IMPORTANT RULES:
-- Focus on real-world action
+- Focus on meaning, not words
 - Do NOT return database categories
-- Be semantic, not technical
+- Be practical and direct
+- If user expresses a clear wish (donate, help, volunteer) → DO NOT ask clarification
 
-Return ONLY valid JSON:
+Categories:
+- animals
+- environment
+- community
+- unclear
 
-{{
+Return ONLY valid JSON (no markdown, no explanation):
+
+{
   "intent": "short label",
   "category": "animals | environment | community | unclear",
   "action_type": "volunteering | donation | awareness | info | mixed",
-  "needs_clarification": true,
+  "needs_clarification": false,
   "keywords": ["word1", "word2"]
-}}
+}
 
-User:
+Rules for needs_clarification:
+- false → user has clear goal (donate, help, volunteer, support)
+- true → only vague phrases like "do something good", "help others"
+
+User input:
 {user_input}
 """
