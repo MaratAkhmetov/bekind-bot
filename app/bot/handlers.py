@@ -16,7 +16,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     result = run_workflow(user_text)
 
-    # 🌱 RANDOM GOOD DEEDS FLOW
+    # 🌱 RANDOM GOOD DEEDS
     if isinstance(result, dict) and result.get("type") == "random_deeds":
         items = result["data"]
 
@@ -33,15 +33,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # ❓ CLARIFICATION FLOW
+    # ❓ CLARIFICATION
     if isinstance(result, dict) and result.get("type") == "clarification":
         await update.message.reply_text(result["message"])
         return
 
-    # 📦 LOCAL DB RESULTS
+    # 📦 LIST RESULTS
     if isinstance(result, list):
         if len(result) == 0:
-            await update.message.reply_text("No local results found.")
+            await update.message.reply_text("No results found.")
             return
 
         formatted = "\n\n".join(
@@ -51,7 +51,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(formatted)
         return
 
-    # 🧠 DEFAULT (LLM ANSWER)
+    # 🧠 DEFAULT
     await update.message.reply_text(str(result))
 
 
@@ -62,12 +62,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     if data == "more_like_this":
-        await query.message.reply_text("🔁 Showing more similar opportunities... (next step: embedding search)")
+        await query.message.reply_text("🔁 Finding similar opportunities...")
 
     elif data == "different_category":
-        await query.message.reply_text(
-            "🌍 Try: animals / environment / community"
-        )
+        await query.message.reply_text("🌍 Try: animals / environment / community")
 
     elif data == "done":
-        await query.message.reply_text("💚 Thank you for doing something good today!")
+        await query.message.reply_text("💚 Thank you for doing good today!")

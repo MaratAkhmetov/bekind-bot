@@ -1,12 +1,15 @@
-from app.database.search import search_by_category, search_by_tag, random_initiatives
+from app.database.search import search_mixed, random_initiatives
 
 
 def local_search(category=None, query=None):
 
-    if category and category != "unclear":
-        return search_by_category(category)
+    # 🧠 1. если есть сигнал — используем structured search
+    if category or query:
+        results = search_mixed(category=category, query=query)
 
-    if query:
-        return search_by_tag(query)
+        # fallback если ничего не найдено
+        if results and len(results) > 0:
+            return results
 
-    return random_initiatives()
+    # 🌱 2. fallback — random inspiration
+    return random_initiatives(limit=3)

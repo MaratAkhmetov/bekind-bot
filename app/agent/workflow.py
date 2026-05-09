@@ -10,7 +10,7 @@ def run_workflow(user_input: str):
 
     text = user_input.lower()
 
-    # 🌱 SPECIAL ENTRY POINT: random good deed button
+    # 🌱 ENTRY: random suggestion
     if "suggest" in text or "good deed" in text:
         data = random_initiatives(limit=3)
 
@@ -26,7 +26,7 @@ def run_workflow(user_input: str):
     if intent.get("needs_clarification"):
         return ask_clarification(intent)
 
-    # 3. LOCAL SEARCH FIRST
+    # 3. LOCAL SEARCH
     category = intent.get("category")
     keywords = intent.get("keywords", [])
 
@@ -35,7 +35,7 @@ def run_workflow(user_input: str):
         query=" ".join(keywords)
     )
 
-    # 4. DECISION: fallback to web
+    # 4. FALLBACK WEB
     if local_data and len(local_data) > 0:
         web_data = None
     else:

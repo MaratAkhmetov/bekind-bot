@@ -5,7 +5,6 @@ from app.agent.prompts import INTENT_PROMPT
 
 def analyze_intent(user_input: str):
     prompt = INTENT_PROMPT.format(user_input=user_input)
-
     response = generate_text(prompt)
 
     try:
