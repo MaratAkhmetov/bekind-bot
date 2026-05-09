@@ -4,8 +4,8 @@ def synthesize_answer(user_input, local_data, web_data):
 
     if not data:
         return (
-            "I couldn't find relevant initiatives for your request.\n\n"
-            "Try one of these categories:\n"
+            "I couldn't find exact initiatives.\n\n"
+            "Try:\n"
             "🐾 animals\n"
             "🌍 environment\n"
             "🤝 community"
@@ -25,15 +25,15 @@ def synthesize_answer(user_input, local_data, web_data):
         text += f"{i}. {name}\n"
         text += f"{description}\n"
 
-        # 🌐 LINKS (обязательно как ты хотел)
+        # 🌐 LINKS (clean fallback logic)
         if website:
             text += f"🌐 Website: {website}\n"
-
-        if instagram:
+        elif instagram:
             text += f"📸 Instagram: {instagram}\n"
-
-        if facebook:
+        elif facebook:
             text += f"📘 Facebook: {facebook}\n"
+        else:
+            text += "🔗 No public links available\n"
 
         text += "\n"
 

@@ -8,9 +8,20 @@ def local_search(category=None, query=None):
         query=query
     )
 
-    # если нашли — возвращаем
-    if results:
+    # ✅ если есть результат — возвращаем
+    if results and len(results) > 0:
         return results
 
-    # fallback
-    return random_initiatives(limit=3)
+    # 🔥 fallback 1: try random
+    fallback = random_initiatives(limit=3)
+
+    if fallback:
+        return fallback
+
+    # 🔥 absolute fallback
+    return [
+        {
+            "name": "No initiatives found",
+            "description": "Try animals, environment or community"
+        }
+    ]

@@ -1,6 +1,5 @@
 import json
 import re
-
 from app.services.llm import generate_text
 from app.agent.prompts import INTENT_PROMPT
 
@@ -15,11 +14,10 @@ def analyze_intent(user_input: str):
     text = user_input.lower()
 
     # =====================================
-    # 1. RULE-BASED FAST PATH (ВАЖНО)
+    # 1. RULE-BASED FAST PATH (ОБЯЗАТЕЛЬНО)
     # =====================================
 
-    # 🐾 animals
-    if any(x in text for x in ["animal", "cat", "dog", "stray", "pet"]):
+    if any(x in text for x in ["cat", "dog", "animal", "stray", "pet"]):
         return {
             "intent": "animals",
             "category": "animals",
@@ -28,8 +26,7 @@ def analyze_intent(user_input: str):
             "keywords": ["animals"]
         }
 
-    # 🌍 environment
-    if any(x in text for x in ["environment", "eco", "cleanup", "tree", "recycle"]):
+    if any(x in text for x in ["eco", "environment", "tree", "cleanup", "recycle"]):
         return {
             "intent": "environment",
             "category": "environment",
@@ -38,8 +35,7 @@ def analyze_intent(user_input: str):
             "keywords": ["environment"]
         }
 
-    # 🤝 community
-    if any(x in text for x in ["community", "people", "homeless", "elderly"]):
+    if any(x in text for x in ["community", "people", "help", "homeless", "elderly"]):
         return {
             "intent": "community",
             "category": "community",
@@ -48,11 +44,10 @@ def analyze_intent(user_input: str):
             "keywords": ["community"]
         }
 
-    # 💰 donation detection (ВАЖНО)
     if "donate" in text or "donation" in text:
         if any(x in text for x in ["cat", "dog", "animal", "stray"]):
             return {
-                "intent": "donation animals",
+                "intent": "donation_animals",
                 "category": "animals",
                 "action_type": "donation",
                 "needs_clarification": False,
@@ -60,25 +55,23 @@ def analyze_intent(user_input: str):
             }
 
     # =====================================
-    # 2. LLM FALLBACK
+    # 2. LLM fallback
     # =====================================
 
     try:
         prompt = INTENT_PROMPT.format(user_input=user_input)
-
         response = generate_text(prompt)
 
         json_str = extract_json(response)
-
         if not json_str:
             raise ValueError("No JSON found")
 
         data = json.loads(json_str)
 
-        category = data.get("category", "unclear")
+        category = data.get("category", "community")
 
-        # 🔥 CRITICAL FIX: never allow "unclear" if keywords exist
-        if category == "unclear":
+        # ❗ NEVER UNCLEAR in production flow
+        if category == "unclear" or not category:
             category = "community"
 
         return {
@@ -86,18 +79,16 @@ def analyze_intent(user_input: str):
             "category": category,
             "action_type": data.get("action_type", "info"),
             "needs_clarification": False,
-            "keywords": data.get("keywords", [])
+            "keywords": data.get("keywords", ["help"])
         }
 
     except Exception as e:
-
         print("INTENT ERROR:", e)
 
-        # 🚨 SAFE DEFAULT (NEVER BREAK FLOW)
         return {
             "intent": "fallback",
             "category": "community",
             "action_type": "info",
             "needs_clarification": False,
-            "keywords": []
+            "keywords": ["help"]
         }
