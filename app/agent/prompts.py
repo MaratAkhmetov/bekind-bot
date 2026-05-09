@@ -18,13 +18,13 @@ IMPORTANT RULES:
 
 Return ONLY valid JSON:
 
-{
+{{
   "intent": "short label",
   "category": "animals | environment | community | unclear",
   "action_type": "volunteering | donation | awareness | info | mixed",
-  "needs_clarification": true/false,
+  "needs_clarification": true,
   "keywords": ["word1", "word2"]
-}
+}}
 
 User:
 {user_input}
