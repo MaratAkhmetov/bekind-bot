@@ -17,13 +17,13 @@ Categories:
 
 Return ONLY valid JSON (no markdown, no explanation):
 
-{
+{{
   "intent": "short label",
   "category": "animals | environment | community | unclear",
   "action_type": "volunteering | donation | awareness | info | mixed",
   "needs_clarification": false,
   "keywords": ["word1", "word2"]
-}
+}}
 
 Rules for needs_clarification:
 - false → user has clear goal (donate, help, volunteer, support)
