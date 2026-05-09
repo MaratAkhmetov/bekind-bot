@@ -1,75 +1,92 @@
-from app.database.db import get_connection
+import sqlite3
+from app.config import DATABASE_PATH
 
 
-def search_by_category(category: str):
+def get_connection():
+    print("DB PATH:", DATABASE_PATH)
+    return sqlite3.connect(DATABASE_PATH)
+
+
+def search_by_category(category):
+
     conn = get_connection()
     cursor = conn.cursor()
 
+    print("SEARCH CATEGORY:", category)
+
     cursor.execute("""
-        SELECT * FROM initiatives
+        SELECT name, description
+        FROM initiatives
         WHERE category = ?
-        LIMIT 10
+        LIMIT 5
     """, (category,))
 
-    results = cursor.fetchall()
+    rows = cursor.fetchall()
+
+    print("FOUND ROWS:", rows)
+
     conn.close()
-    return results
+
+    return [
+        {
+            "name": row[0],
+            "description": row[1]
+        }
+        for row in rows
+    ]
 
 
-def search_by_tag(query: str):
+def search_by_tag(query):
+
     conn = get_connection()
     cursor = conn.cursor()
 
+    print("SEARCH TAG:", query)
+
     cursor.execute("""
-        SELECT * FROM initiatives
+        SELECT name, description
+        FROM initiatives
         WHERE tags LIKE ?
-        LIMIT 10
+        LIMIT 5
     """, (f"%{query}%",))
 
-    results = cursor.fetchall()
+    rows = cursor.fetchall()
+
+    print("FOUND TAG ROWS:", rows)
+
     conn.close()
-    return results
+
+    return [
+        {
+            "name": row[0],
+            "description": row[1]
+        }
+        for row in rows
+    ]
 
 
-def random_initiatives(limit: int = 3):
+def random_initiatives(limit=3):
+
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT * FROM initiatives
+        SELECT name, description
+        FROM initiatives
         ORDER BY RANDOM()
         LIMIT ?
     """, (limit,))
 
-    results = cursor.fetchall()
-    conn.close()
-    return results
+    rows = cursor.fetchall()
 
+    print("RANDOM ROWS:", rows)
 
-# 🔥 NEW: smarter hybrid search (ВАЖНО)
-def search_mixed(category=None, query=None):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    sql = """
-        SELECT * FROM initiatives
-        WHERE 1=1
-    """
-
-    params = []
-
-    if category and category != "unclear":
-        sql += " AND category = ?"
-        params.append(category)
-
-    if query:
-        sql += " AND tags LIKE ?"
-        params.append(f"%{query}%")
-
-    sql += " LIMIT 10"
-
-    cursor.execute(sql, params)
-    results = cursor.fetchall()
     conn.close()
 
-    return results
+    return [
+        {
+            "name": row[0],
+            "description": row[1]
+        }
+        for row in rows
+    ]
