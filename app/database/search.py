@@ -23,7 +23,7 @@ def search_by_category(category):
 
     rows = cursor.fetchall()
 
-    print("FOUND ROWS:", rows)
+    print("FOUND CATEGORY ROWS:", rows)
 
     conn.close()
 
@@ -65,11 +65,51 @@ def search_by_tag(query):
     ]
 
 
+def search_mixed(category=None, query=None):
+
+    print("SEARCH MIXED")
+    print("CATEGORY:", category)
+    print("QUERY:", query)
+
+    # 1. category search
+    if category and category != "unclear":
+
+        results = search_by_category(category)
+
+        if results and len(results) > 0:
+            print("RETURNING CATEGORY RESULTS")
+            return results
+
+    # 2. tag search fallback
+    if query:
+
+        results = search_by_tag(query)
+
+        if results and len(results) > 0:
+            print("RETURNING TAG RESULTS")
+            return results
+
+    print("NO RESULTS FOUND")
+
+    return []
+
+
 def random_initiatives(limit=3):
 
     conn = get_connection()
     cursor = conn.cursor()
 
+    # ✅ CHECK TOTAL RECORDS
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM initiatives
+    """)
+
+    count = cursor.fetchone()[0]
+
+    print("TOTAL INITIATIVES:", count)
+
+    # ✅ RANDOM QUERY
     cursor.execute("""
         SELECT name, description
         FROM initiatives
