@@ -1,3 +1,5 @@
+import traceback
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -13,59 +15,87 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text
-    result = run_workflow(user_text)
 
-    # 🌱 RANDOM GOOD DEEDS
-    if isinstance(result, dict) and result.get("type") == "random_deeds":
-        items = result["data"]
+    try:
+        user_text = update.message.text
 
-        context.user_data["last_options"] = items
+        print("USER MESSAGE:", user_text)
 
-        text = "Here are 3 ways you can do good today:\n\n"
+        result = run_workflow(user_text)
 
-        for i, item in enumerate(items, 1):
-            text += f"{i}. {item['name']}\n{item['description']}\n\n"
+        print("WORKFLOW RESULT:", result)
 
-        await update.message.reply_text(
-            text,
-            reply_markup=good_deed_keyboard()
-        )
-        return
+        # 🌱 RANDOM GOOD DEEDS
+        if isinstance(result, dict) and result.get("type") == "random_deeds":
 
-    # ❓ CLARIFICATION
-    if isinstance(result, dict) and result.get("type") == "clarification":
-        await update.message.reply_text(result["message"])
-        return
+            items = result["data"]
 
-    # 📦 LIST RESULTS
-    if isinstance(result, list):
-        if len(result) == 0:
-            await update.message.reply_text("No results found.")
+            text = "Here are 3 ways you can do good today:\n\n"
+
+            for i, item in enumerate(items, 1):
+                text += f"{i}. {item['name']}\n{item['description']}\n\n"
+
+            await update.message.reply_text(
+                text,
+                reply_markup=good_deed_keyboard()
+            )
+
             return
 
-        formatted = "\n\n".join(
-            [f"{r['name']}\n{r['description']}" for r in result]
+        # ❓ CLARIFICATION
+        if isinstance(result, dict) and result.get("type") == "clarification":
+
+            await update.message.reply_text(result["message"])
+            return
+
+        # 📦 LOCAL RESULTS
+        if isinstance(result, list):
+
+            if len(result) == 0:
+                await update.message.reply_text("No local results found.")
+                return
+
+            formatted = "\n\n".join(
+                [
+                    f"{r['name']}\n{r['description']}"
+                    for r in result
+                ]
+            )
+
+            await update.message.reply_text(formatted)
+            return
+
+        # 🧠 DEFAULT
+        await update.message.reply_text(str(result))
+
+    except Exception as e:
+
+        print("ERROR:")
+        traceback.print_exc()
+
+        await update.message.reply_text(
+            "I'm having trouble processing this right now. Try again."
         )
-
-        await update.message.reply_text(formatted)
-        return
-
-    # 🧠 DEFAULT
-    await update.message.reply_text(str(result))
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     query = update.callback_query
     await query.answer()
 
     data = query.data
 
     if data == "more_like_this":
-        await query.message.reply_text("🔁 Finding similar opportunities...")
+        await query.message.reply_text(
+            "🔁 Finding similar opportunities..."
+        )
 
     elif data == "different_category":
-        await query.message.reply_text("🌍 Try: animals / environment / community")
+        await query.message.reply_text(
+            "🌍 Try: animals / environment / community"
+        )
 
     elif data == "done":
-        await query.message.reply_text("💚 Thank you for doing good today!")
+        await query.message.reply_text(
+            "💚 Thank you for doing good today!"
+        )
