@@ -1,6 +1,6 @@
 def synthesize_answer(user_input, local_data, web_data):
 
-    data = local_data or web_data or []
+    data = local_data if local_data else web_data if web_data else []
 
     if not data:
         return "No initiatives found."

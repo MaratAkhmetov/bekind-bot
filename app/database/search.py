@@ -121,33 +121,39 @@ def search_mixed(category=None, query=None):
 # RANDOM BALANCED
 # =====================================
 
-def random_initiatives():
+def random_initiatives(limit=3, category=None):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    categories = [
-        "Animals",
-        "Environment",
-        "Community"
-    ]
-
     results = []
 
-    for category in categories:
+    if category:
+        cursor.execute("""
+            SELECT name, description, website, instagram, facebook
+            FROM initiatives
+            WHERE category = ?
+            ORDER BY RANDOM()
+            LIMIT ?
+        """, (category, limit))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [dict(row) for row in rows]
+
+    # fallback mixed
+    categories = ["Animals", "Environment", "Community"]
+
+    for cat in categories:
 
         cursor.execute("""
-            SELECT
-                name,
-                description,
-                website,
-                instagram,
-                facebook
+            SELECT name, description, website, instagram, facebook
             FROM initiatives
             WHERE category = ?
             ORDER BY RANDOM()
             LIMIT 1
-        """, (category,))
+        """, (cat,))
 
         row = cursor.fetchone()
 
