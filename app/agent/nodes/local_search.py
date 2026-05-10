@@ -1,27 +1,31 @@
 from app.database.search import search_mixed, random_initiatives
 
 
+from app.database.search import search_mixed, random_initiatives
+
+
 def local_search(category=None, query=None):
 
-    results = search_mixed(
-        category=category,
-        query=query
-    )
+    # =====================================
+    # 1. STRICT CATEGORY SEARCH (ВАЖНО)
+    # =====================================
 
-    # ✅ если есть результат — возвращаем
-    if results and len(results) > 0:
+    if category in ["animals", "environment", "community"]:
+
+        results = search_mixed(category=category, query=query)
+
+        if results:
+            return results
+
+        # fallback: random within category ONLY
+        return random_initiatives(limit=3, category=category)
+
+    # =====================================
+    # 2. fallback search
+    # =====================================
+    results = search_mixed(category=None, query=query)
+
+    if results:
         return results
 
-    # 🔥 fallback 1: try random
-    fallback = random_initiatives(limit=3)
-
-    if fallback:
-        return fallback
-
-    # 🔥 absolute fallback
-    return [
-        {
-            "name": "No initiatives found",
-            "description": "Try animals, environment or community"
-        }
-    ]
+    return random_initiatives(limit=3)

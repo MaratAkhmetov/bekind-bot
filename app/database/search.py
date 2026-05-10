@@ -3,130 +3,100 @@ from app.config import DATABASE_PATH
 
 
 def get_connection():
-    print("DB PATH:", DATABASE_PATH)
-    return sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
+# =====================================
+# CATEGORY SEARCH (ЖЁСТКАЯ ЛОГИКА)
+# =====================================
 def search_by_category(category):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    print("SEARCH CATEGORY:", category)
-
     cursor.execute("""
-        SELECT name, description
+        SELECT name, description, website, instagram, facebook
         FROM initiatives
         WHERE category = ?
         LIMIT 5
     """, (category,))
 
     rows = cursor.fetchall()
-
-    print("FOUND CATEGORY ROWS:", rows)
-
     conn.close()
 
-    return [
-        {
-            "name": row[0],
-            "description": row[1]
-        }
-        for row in rows
-    ]
+    return [dict(row) for row in rows]
 
 
+# =====================================
+# TAG SEARCH
+# =====================================
 def search_by_tag(query):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    print("SEARCH TAG:", query)
-
     cursor.execute("""
-        SELECT name, description
+        SELECT name, description, website, instagram, facebook
         FROM initiatives
         WHERE tags LIKE ?
         LIMIT 5
     """, (f"%{query}%",))
 
     rows = cursor.fetchall()
-
-    print("FOUND TAG ROWS:", rows)
-
     conn.close()
 
-    return [
-        {
-            "name": row[0],
-            "description": row[1]
-        }
-        for row in rows
-    ]
+    return [dict(row) for row in rows]
 
 
+# =====================================
+# MIXED SEARCH (CONTROLLED)
+# =====================================
 def search_mixed(category=None, query=None):
 
-    print("SEARCH MIXED")
-    print("CATEGORY:", category)
-    print("QUERY:", query)
+    print("SEARCH MIXED:", category, query)
 
-    # 1. category search
-    if category and category != "unclear":
-
+    # 1. category priority
+    if category:
         results = search_by_category(category)
-
-        if results and len(results) > 0:
-            print("RETURNING CATEGORY RESULTS")
+        if results:
             return results
 
-    # 2. tag search fallback
+    # 2. tag fallback
     if query:
-
         results = search_by_tag(query)
-
-        if results and len(results) > 0:
-            print("RETURNING TAG RESULTS")
+        if results:
             return results
-
-    print("NO RESULTS FOUND")
 
     return []
 
 
-def random_initiatives(limit=3):
+# =====================================
+# BALANCED RANDOM (ВАЖНО)
+# =====================================
+def random_initiatives(limit=3, category=None):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    # ✅ CHECK TOTAL RECORDS
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM initiatives
-    """)
-
-    count = cursor.fetchone()[0]
-
-    print("TOTAL INITIATIVES:", count)
-
-    # ✅ RANDOM QUERY
-    cursor.execute("""
-        SELECT name, description
-        FROM initiatives
-        ORDER BY RANDOM()
-        LIMIT ?
-    """, (limit,))
+    if category:
+        cursor.execute("""
+            SELECT name, description, website, instagram, facebook
+            FROM initiatives
+            WHERE category = ?
+            ORDER BY RANDOM()
+            LIMIT ?
+        """, (category, limit))
+    else:
+        cursor.execute("""
+            SELECT name, description, website, instagram, facebook
+            FROM initiatives
+            ORDER BY RANDOM()
+            LIMIT ?
+        """, (limit,))
 
     rows = cursor.fetchall()
-
-    print("RANDOM ROWS:", rows)
-
     conn.close()
 
-    return [
-        {
-            "name": row[0],
-            "description": row[1]
-        }
-        for row in rows
-    ]
+    return [dict(row) for row in rows]
