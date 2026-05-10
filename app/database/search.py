@@ -17,13 +17,19 @@ def search_by_category(category):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT name, description, website, instagram, facebook
+        SELECT
+            name,
+            description,
+            website,
+            instagram,
+            facebook
         FROM initiatives
-        WHERE category = ?
-        LIMIT 5
+        WHERE LOWER(category) = LOWER(?)
+        LIMIT 3
     """, (category,))
 
     rows = cursor.fetchall()
+
     conn.close()
 
     return [dict(row) for row in rows]
@@ -75,28 +81,46 @@ def search_mixed(category=None, query=None):
 # =====================================
 # BALANCED RANDOM (ВАЖНО)
 # =====================================
-def random_initiatives(limit=3, category=None):
+def random_initiatives():
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    if category:
+    categories = [
+        "Animals",
+        "Environment",
+        "Community"
+    ]
+
+    results = []
+
+    for category in categories:
+
         cursor.execute("""
-            SELECT name, description, website, instagram, facebook
+            SELECT
+                name,
+                description,
+                website,
+                instagram,
+                facebook
             FROM initiatives
             WHERE category = ?
             ORDER BY RANDOM()
-            LIMIT ?
-        """, (category, limit))
-    else:
-        cursor.execute("""
-            SELECT name, description, website, instagram, facebook
-            FROM initiatives
-            ORDER BY RANDOM()
-            LIMIT ?
-        """, (limit,))
+            LIMIT 1
+        """, (category,))
 
-    rows = cursor.fetchall()
+        row = cursor.fetchone()
+
+        if row:
+
+            results.append({
+                "name": row[0],
+                "description": row[1],
+                "website": row[2],
+                "instagram": row[3],
+                "facebook": row[4]
+            })
+
     conn.close()
 
-    return [dict(row) for row in rows]
+    return results
