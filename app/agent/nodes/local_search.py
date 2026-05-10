@@ -28,4 +28,4 @@ def local_search(category=None, query=None):
     if results:
         return results
 
-    return random_initiatives(limit=3)
+    return random_initiatives()

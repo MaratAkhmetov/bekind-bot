@@ -3,18 +3,23 @@ from app.config import DATABASE_PATH
 
 
 def get_connection():
+
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
+
     return conn
 
 
 # =====================================
-# CATEGORY SEARCH (ЖЁСТКАЯ ЛОГИКА)
+# CATEGORY SEARCH
 # =====================================
+
 def search_by_category(category):
 
     conn = get_connection()
     cursor = conn.cursor()
+
+    print("SEARCH CATEGORY:", category)
 
     cursor.execute("""
         SELECT
@@ -24,8 +29,9 @@ def search_by_category(category):
             instagram,
             facebook
         FROM initiatives
-        WHERE LOWER(category) = LOWER(?)
-        LIMIT 3
+        WHERE category = ?
+        COLLATE NOCASE
+        LIMIT 5
     """, (category,))
 
     rows = cursor.fetchall()
@@ -38,49 +44,87 @@ def search_by_category(category):
 # =====================================
 # TAG SEARCH
 # =====================================
+
 def search_by_tag(query):
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT name, description, website, instagram, facebook
-        FROM initiatives
-        WHERE tags LIKE ?
-        LIMIT 5
-    """, (f"%{query}%",))
+    print("SEARCH TAG:", query)
 
-    rows = cursor.fetchall()
+    keywords = query.split()
+
+    results = []
+
+    for word in keywords:
+
+        cursor.execute("""
+            SELECT
+                name,
+                description,
+                website,
+                instagram,
+                facebook
+            FROM initiatives
+            WHERE LOWER(tags) LIKE LOWER(?)
+            LIMIT 5
+        """, (f"%{word}%",))
+
+        rows = cursor.fetchall()
+
+        for row in rows:
+            item = dict(row)
+
+            # avoid duplicates
+            if item not in results:
+                results.append(item)
+
     conn.close()
 
-    return [dict(row) for row in rows]
+    return results[:5]
 
 
 # =====================================
-# MIXED SEARCH (CONTROLLED)
+# MIXED SEARCH
 # =====================================
+
 def search_mixed(category=None, query=None):
 
     print("SEARCH MIXED:", category, query)
 
-    # 1. category priority
+    # =====================================
+    # 1. CATEGORY PRIORITY
+    # =====================================
+
     if category:
+
         results = search_by_category(category)
+
         if results:
+            print("CATEGORY RESULTS FOUND")
             return results
 
-    # 2. tag fallback
+    # =====================================
+    # 2. TAG FALLBACK
+    # =====================================
+
     if query:
+
         results = search_by_tag(query)
+
         if results:
+            print("TAG RESULTS FOUND")
             return results
+
+    print("NO RESULTS FOUND")
 
     return []
 
 
 # =====================================
-# BALANCED RANDOM (ВАЖНО)
+# RANDOM BALANCED
 # =====================================
+
 def random_initiatives():
 
     conn = get_connection()
@@ -112,14 +156,7 @@ def random_initiatives():
         row = cursor.fetchone()
 
         if row:
-
-            results.append({
-                "name": row[0],
-                "description": row[1],
-                "website": row[2],
-                "instagram": row[3],
-                "facebook": row[4]
-            })
+            results.append(dict(row))
 
     conn.close()
 
