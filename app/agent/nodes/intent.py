@@ -36,7 +36,12 @@ def analyze_intent(user_input: str):
             "keywords": ["environment", "cleanup", "trees", "ecology"]
         }
 
-    if "🤝" in text or "community" in text:
+    if (
+        "🤝" in text
+        or "help people" in text
+        or "help community" in text
+        or "people / community" in text
+    ):
         return {
             "intent": "community",
             "category": "Community",

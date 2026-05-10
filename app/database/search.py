@@ -50,38 +50,34 @@ def search_by_tag(query):
     conn = get_connection()
     cursor = conn.cursor()
 
-    print("SEARCH TAG:", query)
+    words = query.lower().split()
 
-    keywords = query.split()
+    conditions = []
+    values = []
 
-    results = []
+    for word in words:
+        conditions.append("LOWER(tags) LIKE ?")
+        values.append(f"%{word}%")
 
-    for word in keywords:
+    sql = f"""
+        SELECT
+            name,
+            description,
+            website,
+            instagram,
+            facebook
+        FROM initiatives
+        WHERE {" OR ".join(conditions)}
+        LIMIT 5
+    """
 
-        cursor.execute("""
-            SELECT
-                name,
-                description,
-                website,
-                instagram,
-                facebook
-            FROM initiatives
-            WHERE LOWER(tags) LIKE LOWER(?)
-            LIMIT 5
-        """, (f"%{word}%",))
+    cursor.execute(sql, values)
 
-        rows = cursor.fetchall()
-
-        for row in rows:
-            item = dict(row)
-
-            # avoid duplicates
-            if item not in results:
-                results.append(item)
+    rows = cursor.fetchall()
 
     conn.close()
 
-    return results[:5]
+    return [dict(row) for row in rows]
 
 
 # =====================================
