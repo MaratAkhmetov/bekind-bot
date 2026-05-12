@@ -122,12 +122,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "different_category":
         await query.message.reply_text(
-            "🌍 Try: animals / environment / community",
-            reply_markup=after_answer_keyboard()
+            "🌍 Try: animals / environment / community or write your own idea",
+            reply_markup=main_keyboard()
         )
 
     elif data == "done":
         await query.message.reply_text(
             "💚 Thank you for doing good today!",
-            reply_markup=after_answer_keyboard()
+            reply_markup=main_keyboard()
         )
