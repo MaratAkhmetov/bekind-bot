@@ -36,6 +36,9 @@ def search_by_category(category, exclude_names=None):
         SELECT
             name,
             description,
+            tags,
+            help_types,
+            practical_help,
             website,
             instagram,
             facebook
@@ -75,6 +78,9 @@ def search_by_tag(query, exclude_names=None):
         SELECT
             name,
             description,
+            tags,
+            help_types,
+            practical_help,
             website,
             instagram,
             facebook
@@ -137,7 +143,15 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
 
     if category:
         sql = f"""
-            SELECT name, description, website, instagram, facebook
+            SELECT
+                name,
+                description,
+                tags,
+                help_types,
+                practical_help,
+                website,
+                instagram,
+                facebook
             FROM initiatives
             WHERE category = ?
             {clause}
@@ -153,7 +167,15 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
     categories = ["Animals", "Environment", "Community"]
     for cat in categories:
         sql = f"""
-            SELECT name, description, website, instagram, facebook
+            SELECT
+                name,
+                description,
+                tags,
+                help_types,
+                practical_help,
+                website,
+                instagram,
+                facebook
             FROM initiatives
             WHERE category = ?
             {clause}

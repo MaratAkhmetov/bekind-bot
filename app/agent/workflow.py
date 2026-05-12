@@ -2,7 +2,7 @@ from app.agent.nodes.intent import analyze_intent
 from app.agent.nodes.clarify import ask_clarification
 from app.agent.nodes.local_search import local_search
 from app.agent.nodes.web_search import web_search
-from app.agent.nodes.synthesis import synthesize_answer
+from app.agent.nodes.synthesis import synthesize_advisory
 
 def _web_results_as_items(web_data):
     """
@@ -40,7 +40,7 @@ def _answer_dict(user_input, local_data, web_data, replay: dict):
     if not data:
         return {"type": "answer", "text": "No initiatives found.", "items": [], "replay": replay}
     items = list(data[:5])
-    text = synthesize_answer(user_input, local_data if local_data else None, web_for_synth)
+    text = synthesize_advisory(user_input, local_data if local_data else None, web_for_synth)
     return {"type": "answer", "text": text, "items": items, "replay": replay}
 
 def run_workflow(user_input: str, exclude_names: list | None = None):
