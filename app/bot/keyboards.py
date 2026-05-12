@@ -1,5 +1,4 @@
-from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-
+from telegram import ReplyKeyboardMarkup
 
 def main_keyboard():
     return ReplyKeyboardMarkup(
@@ -11,16 +10,12 @@ def main_keyboard():
         resize_keyboard=True
     )
 
-
-def good_deed_keyboard():
-    return InlineKeyboardMarkup([
+def after_answer_keyboard():
+    return ReplyKeyboardMarkup(
         [
-            InlineKeyboardButton("🔁 More like this", callback_data="more_like_this"),
+            ["🔁 Suggest another"],
+            ["🌍 Change category"],
+            ["✅ I've picked a good deed"],
         ],
-        [
-            InlineKeyboardButton("🌍 Different category", callback_data="different_category"),
-        ],
-        [
-            InlineKeyboardButton("✅ I will do it", callback_data="done"),
-        ]
-    ])
+        resize_keyboard=True,
+    )
