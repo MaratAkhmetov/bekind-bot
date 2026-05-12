@@ -4,12 +4,43 @@ from app.agent.nodes.local_search import local_search
 from app.agent.nodes.web_search import web_search
 from app.agent.nodes.synthesis import synthesize_answer
 
+def _web_results_as_items(web_data):
+    """
+    Превращает ответ web_search() в список dict как у initiatives.
+    Адаптируйте ключи если у Tavily или вашего web_data иные.
+    """
+    if not web_data or not isinstance(web_data, dict):
+        return []
+    raw = web_data.get("results") or []
+    items = []
+    for r in raw[:5]:
+        if not isinstance(r, dict):
+            continue
+        url = r.get("url") or ""
+        title = (r.get("title") or "").strip() or url or "Web result"
+        desc = (r.get("content") or "").strip()
+        items.append({
+            "name": title,
+            "description": desc,
+            "website": url or None,
+            "instagram": None,
+            "facebook": None,
+        })
+    return items
+
 def _answer_dict(user_input, local_data, web_data, replay: dict):
-    data = local_data if local_data else (web_data if isinstance(web_data, list) else None)
+    web_items = _web_results_as_items(web_data)
+    if local_data:
+        data = local_data
+        web_for_synth = None
+    else:
+        data = web_items
+        web_for_synth = web_items if web_items else None
+
     if not data:
         return {"type": "answer", "text": "No initiatives found.", "items": [], "replay": replay}
     items = list(data[:5])
-    text = synthesize_answer(user_input, local_data, web_data if not local_data else None)
+    text = synthesize_answer(user_input, local_data if local_data else None, web_for_synth)
     return {"type": "answer", "text": text, "items": items, "replay": replay}
 
 def run_workflow(user_input: str, exclude_names: list | None = None):
