@@ -12,18 +12,22 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
 
     raw = web_data.get("results") or []
 
-    return [
-        {
-            "name": r.get("title") or "Web result",
-            "description": r.get("content") or "",
-            "website": r.get("url") or "",
+    items = []
+
+    for r in raw[:max_raw]:
+        if not isinstance(r, dict):
+            continue
+
+        items.append({
+            "name": r.get("name", "Web result"),
+            "description": r.get("description", ""),
+            "website": r.get("website", ""),
             "instagram": "",
             "facebook": "",
             "_source": "web",
-        }
-        for r in raw[:max_raw]
-        if isinstance(r, dict)
-    ]
+        })
+
+    return items
 
 
 def _dedupe(items):
