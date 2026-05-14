@@ -9,7 +9,7 @@ def web_search(query: str, exclude_urls=None):
 
     exclude_urls = exclude_urls or []
 
-    logger.info(f"[WEB] CALL query={query}")
+    logger.info(f"[WEB] QUERY = {query}")
 
     try:
         result = client.search(
@@ -17,13 +17,13 @@ def web_search(query: str, exclude_urls=None):
             max_results=10
         )
 
-        raw_results = result.get("results", [])
+        raw = result.get("results", [])
 
-        logger.info(f"[WEB] RAW RESULTS COUNT={len(raw_results)}")
+        logger.info(f"[WEB] RAW RESULTS = {len(raw)}")
 
         cleaned = []
 
-        for item in raw_results:
+        for item in raw:
 
             url = item.get("url", "").strip().lower().rstrip("/")
 
@@ -39,7 +39,7 @@ def web_search(query: str, exclude_urls=None):
                 "_source": "web"
             })
 
-        logger.info(f"[WEB] CLEANED RESULTS COUNT={len(cleaned)}")
+        logger.info(f"[WEB] CLEANED RESULTS = {len(cleaned)}")
 
         return {
             "results": cleaned,
@@ -47,7 +47,6 @@ def web_search(query: str, exclude_urls=None):
         }
 
     except Exception as e:
-
         logger.error(f"[WEB ERROR] {e}")
 
         return {

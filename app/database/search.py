@@ -9,18 +9,18 @@ def get_connection():
 
 
 # =====================================
-# EXCLUDE FRAGMENT HELPER
+# EXCLUDE HELPER
 # =====================================
 
 def _exclude_fragment(exclude_names):
-    exclude_names = [n for n in (exclude_names or []) if n]
+    exclude_names = [n.lower().strip() for n in (exclude_names or []) if n]
 
     if not exclude_names:
         return "", []
 
     placeholders = ",".join("?" * len(exclude_names))
 
-    return f" AND name NOT IN ({placeholders})", exclude_names
+    return f" AND LOWER(name) NOT IN ({placeholders})", exclude_names
 
 
 # =====================================
@@ -31,8 +31,6 @@ def search_by_category(category, exclude_names=None):
 
     conn = get_connection()
     cursor = conn.cursor()
-
-    print("SEARCH CATEGORY:", category)
 
     clause, vals = _exclude_fragment(exclude_names)
 
@@ -45,7 +43,8 @@ def search_by_category(category, exclude_names=None):
             practical_help,
             website,
             instagram,
-            facebook
+            facebook,
+            category
         FROM initiatives
         WHERE LOWER(category) = LOWER(?)
         {clause}
@@ -53,10 +52,8 @@ def search_by_category(category, exclude_names=None):
         LIMIT 5
     """
 
-    cursor.execute(sql, (category, *vals))
-
+    cursor.execute(sql, (category.lower(), *vals))
     rows = cursor.fetchall()
-
     conn.close()
 
     return [dict(row) for row in rows]
@@ -82,14 +79,12 @@ def search_by_tag(query, category=None, exclude_names=None):
 
     clause, vals = _exclude_fragment(exclude_names)
 
-    # IMPORTANT:
-    # STRICT CATEGORY FILTER
     category_sql = ""
     category_vals = []
 
     if category:
         category_sql = "AND LOWER(category) = LOWER(?)"
-        category_vals.append(category)
+        category_vals.append(category.lower())
 
     sql = f"""
         SELECT
@@ -100,7 +95,8 @@ def search_by_tag(query, category=None, exclude_names=None):
             practical_help,
             website,
             instagram,
-            facebook
+            facebook,
+            category
         FROM initiatives
         WHERE (
             {" OR ".join(conditions)}
@@ -111,17 +107,13 @@ def search_by_tag(query, category=None, exclude_names=None):
         LIMIT 5
     """
 
-    cursor.execute(
-        sql,
-        [
-            *values,
-            *category_vals,
-            *vals
-        ]
-    )
+    cursor.execute(sql, [
+        *values,
+        *category_vals,
+        *vals
+    ])
 
     rows = cursor.fetchall()
-
     conn.close()
 
     return [dict(row) for row in rows]
@@ -133,66 +125,32 @@ def search_by_tag(query, category=None, exclude_names=None):
 
 def search_mixed(category=None, query=None, exclude_names=None):
 
-    print("SEARCH MIXED:", category, query)
-
-    # =====================================
-    # STRICT CATEGORY SEARCH
-    # =====================================
+    if category:
+        category = category.lower().strip()
 
     if category:
 
-        # CATEGORY SEARCH
-        results = search_by_category(
-            category,
-            exclude_names=exclude_names
-        )
+        results = search_by_category(category, exclude_names)
 
         if results:
-            print("CATEGORY RESULTS FOUND")
             return results
 
-        # CATEGORY TAG SEARCH
         if query:
-
-            results = search_by_tag(
-                query=query,
-                category=category,
-                exclude_names=exclude_names
-            )
-
+            results = search_by_tag(query, category, exclude_names)
             if results:
-                print("CATEGORY TAG RESULTS FOUND")
                 return results
-
-        # IMPORTANT:
-        # DO NOT FALLBACK GLOBALLY
-        print("NO CATEGORY RESULTS FOUND")
 
         return []
 
-    # =====================================
-    # GENERIC TAG SEARCH
-    # =====================================
-
     if query:
-
-        results = search_by_tag(
-            query=query,
-            category=None,
-            exclude_names=exclude_names
-        )
-
-        if results:
-            print("TAG RESULTS FOUND")
-            return results
-
-    print("NO RESULTS FOUND")
+        results = search_by_tag(query, None, exclude_names)
+        return results or []
 
     return []
 
 
 # =====================================
-# RANDOM BALANCED
+# RANDOM
 # =====================================
 
 def random_initiatives(limit=3, category=None, exclude_names=None):
@@ -200,15 +158,10 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
     conn = get_connection()
     cursor = conn.cursor()
 
-    results = []
-
     clause, vals = _exclude_fragment(exclude_names)
 
-    # =====================================
-    # CATEGORY RANDOM
-    # =====================================
-
     if category:
+        category = category.lower()
 
         sql = f"""
             SELECT
@@ -219,7 +172,8 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
                 practical_help,
                 website,
                 instagram,
-                facebook
+                facebook,
+                category
             FROM initiatives
             WHERE LOWER(category) = LOWER(?)
             {clause}
@@ -227,33 +181,17 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
             LIMIT ?
         """
 
-        cursor.execute(
-            sql,
-            (
-                category,
-                *vals,
-                limit
-            )
-        )
-
+        cursor.execute(sql, (category, *vals, limit))
         rows = cursor.fetchall()
-
         conn.close()
 
         return [dict(row) for row in rows]
 
-    # =====================================
-    # BALANCED MIXED RANDOM
-    # =====================================
+    categories = ["animals", "environment", "community"]
 
-    categories = [
-        "Animals",
-        "Environment",
-        "Community"
-    ]
+    results = []
 
     for cat in categories:
-
         sql = f"""
             SELECT
                 name,
@@ -263,7 +201,8 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
                 practical_help,
                 website,
                 instagram,
-                facebook
+                facebook,
+                category
             FROM initiatives
             WHERE LOWER(category) = LOWER(?)
             {clause}
@@ -272,11 +211,10 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
         """
 
         cursor.execute(sql, (cat, *vals))
-
         row = cursor.fetchone()
 
         if row:
             results.append(dict(row))
-    conn.close()
 
+    conn.close()
     return results
