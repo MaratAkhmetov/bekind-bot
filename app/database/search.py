@@ -277,7 +277,6 @@ def random_initiatives(limit=3, category=None, exclude_names=None):
 
         if row:
             results.append(dict(row))
-
     conn.close()
 
     return results
