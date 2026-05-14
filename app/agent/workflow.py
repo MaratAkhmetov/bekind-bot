@@ -9,15 +9,7 @@ from app.agent.nodes.synthesis import synthesize_advisory
 # HELPERS
 # =====================================
 
-def _norm_url(u: str | None) -> str:
-    if not u:
-        return ""
-    return str(u).strip().lower().rstrip("/")
-
-
 def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
-    excluded = {_norm_url(u) for u in (exclude_urls or [])}
-
     if not web_data or not isinstance(web_data, dict):
         return []
 
@@ -28,19 +20,12 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
         if not isinstance(r, dict):
             continue
 
-        url = r.get("url") or ""
-        title = (r.get("title") or "").strip() or url or "Web result"
-        desc = (r.get("content") or "").strip()
-
         items.append({
-            "name": title,
-            "description": desc,
-            "website": url or None,
-            "instagram": None,
-            "facebook": None,
-            "tags": "",
-            "help_types": "",
-            "practical_help": "",
+            "name": (r.get("title") or "Web result"),
+            "description": (r.get("content") or ""),
+            "website": r.get("url") or "",
+            "instagram": "",
+            "facebook": "",
             "_source": "web",
         })
 
@@ -49,77 +34,49 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
 
 def _dedupe(items):
     seen = set()
-    result = []
+    out = []
 
     for i in items:
         if not isinstance(i, dict):
             continue
 
-        name = (i.get("name") or "").strip().lower()
-        url = _norm_url(i.get("website"))
-
-        key = name or url
-        if not key:
-            continue
-
-        if key in seen:
+        key = (i.get("name") or i.get("website") or "").strip().lower()
+        if not key or key in seen:
             continue
 
         seen.add(key)
-        result.append(i)
+        out.append(i)
 
-    return result
-
-
-def _build_web_query(user_input: str, replay: dict) -> str:
-    kind = replay.get("kind")
-
-    if kind == "preset_category":
-        cat = replay.get("category", "")
-        return f"{user_input} {cat} volunteer NGO charity Serbia Belgrade"
-
-    if kind == "mixed_random":
-        return f"{user_input} volunteer help charity Serbia initiatives"
-
-    if kind == "freeform":
-        return f"{replay.get('user_input', user_input)} NGO volunteer help Serbia"
-
-    return f"{user_input} volunteer NGO Serbia"
+    return out
 
 
-def _fetch_web_fallback(user_input: str, replay: dict, exclude_urls=None):
-    q = _build_web_query(user_input, replay)
+def _should_fallback(local_data):
+    """
+    SINGLE source of truth for web fallback logic
+    """
+    return not local_data or len(local_data) < 2
 
-    web_data = web_search(q)
 
-    if _web_results_as_items(web_data, exclude_urls):
-        return web_data
+def _fetch_web(user_input, replay):
+    query_map = {
+        "preset_category": f"{user_input} NGO volunteer Serbia Belgrade",
+        "mixed_random": f"{user_input} volunteer help Serbia NGO",
+        "freeform": f"{user_input} NGO volunteer help",
+    }
 
-    return web_search(q + " organizations volunteer NGO")
+    q = query_map.get(replay.get("kind"), f"{user_input} volunteer NGO")
+
+    return web_search(q)
 
 
 # =====================================
-# CORE ANSWER BUILDER
+# CORE
 # =====================================
 
-def _answer_dict(
-    user_input,
-    local_data,
-    web_data,
-    replay: dict,
-    exclude_urls=None,
-):
+def _answer(user_input, local_data, web_data, replay):
+    local_items = local_data or []
+    web_items = _web_results_as_items(web_data)
 
-    local_items = []
-    if local_data:
-        for row in local_data:
-            d = dict(row)
-            d["_source"] = "local"
-            local_items.append(d)
-
-    web_items = _web_results_as_items(web_data, exclude_urls=exclude_urls)
-
-    # MERGE EVERYTHING
     data = _dedupe(local_items + web_items)
 
     if not data:
@@ -130,7 +87,6 @@ def _answer_dict(
             "replay": replay,
         }
 
-    # synthesis prefers local+web if available
     text = synthesize_advisory(
         user_input,
         local_items if local_items else None,
@@ -146,82 +102,57 @@ def _answer_dict(
 
 
 # =====================================
-# MAIN WORKFLOW
+# WORKFLOW
 # =====================================
 
-def run_workflow(
-    user_input: str,
-    exclude_names=None,
-    exclude_urls=None,
-):
+def run_workflow(user_input, exclude_names=None, exclude_urls=None):
     text = user_input.lower().strip()
 
-    # 🐾 Animals
+    # -------------------------
+    # FAST PATHS
+    # -------------------------
+
     if "help animals" in text or "🐾" in text:
         category = "Animals"
-        query_str = "cats dogs stray animals rescue"
+        query = "cats dogs rescue stray animals"
 
-        local_data = local_search(
-            category=category,
-            query=query_str,
-            exclude_names=exclude_names,
-        )
+        local_data = local_search(category, query, exclude_names)
+        replay = {"kind": "preset_category", "category": category}
 
-        replay = {"kind": "preset_category", "category": category, "query": query_str}
+        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
+        return _answer(user_input, local_data, web_data, replay)
 
-        web_data = _fetch_web_fallback(user_input, replay, exclude_urls)
-
-        return _answer_dict(user_input, local_data, web_data, replay, exclude_urls)
-
-    # 🌍 Environment
     if "help environment" in text or "🌍" in text:
         category = "Environment"
-        query_str = "environment cleanup trees ecology"
+        query = "cleanup trees ecology"
 
-        local_data = local_search(
-            category=category,
-            query=query_str,
-            exclude_names=exclude_names,
-        )
+        local_data = local_search(category, query, exclude_names)
+        replay = {"kind": "preset_category", "category": category}
 
-        replay = {"kind": "preset_category", "category": category, "query": query_str}
+        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
+        return _answer(user_input, local_data, web_data, replay)
 
-        web_data = _fetch_web_fallback(user_input, replay, exclude_urls)
-
-        return _answer_dict(user_input, local_data, web_data, replay, exclude_urls)
-
-    # 🤝 Community
     if "help people" in text or "🤝" in text:
         category = "Community"
-        query_str = "community homeless elderly refugees"
+        query = "community homeless elderly refugees"
 
-        local_data = local_search(
-            category=category,
-            query=query_str,
-            exclude_names=exclude_names,
-        )
+        local_data = local_search(category, query, exclude_names)
+        replay = {"kind": "preset_category", "category": category}
 
-        replay = {"kind": "preset_category", "category": category, "query": query_str}
+        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
+        return _answer(user_input, local_data, web_data, replay)
 
-        web_data = _fetch_web_fallback(user_input, replay, exclude_urls)
-
-        return _answer_dict(user_input, local_data, web_data, replay, exclude_urls)
-
-    # 🌱 Suggest random deed
     if "suggest" in text or "good deed" in text:
-        local_data = random_initiatives(
-            limit=3,
-            category=None,
-            exclude_names=exclude_names,
-        )
-
+        local_data = random_initiatives(limit=5, category=None, exclude_names=exclude_names)
         replay = {"kind": "mixed_random"}
 
-        web_data = _fetch_web_fallback(user_input, replay, exclude_urls)
+        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
+        return _answer(user_input, local_data, web_data, replay)
 
-        return _answer_dict(user_input, local_data, web_data, replay, exclude_urls)
-
+    # -------------------------
     # INTENT FLOW
+    # -------------------------
+
     intent = analyze_intent(user_input)
 
     if intent.get("needs_clarification"):
@@ -230,30 +161,20 @@ def run_workflow(
     category = intent.get("category")
     keywords = intent.get("keywords", [])
 
-    local_data = local_search(
-        category=category,
-        query=" ".join(keywords),
-        exclude_names=exclude_names,
-    )
+    local_data = local_search(category, " ".join(keywords), exclude_names)
 
     replay = {"kind": "freeform", "user_input": user_input}
 
-    web_data = None
-    if not local_data:
-        web_data = _fetch_web_fallback(user_input, replay, exclude_urls)
+    web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
 
-    return _answer_dict(user_input, local_data, web_data, replay, exclude_urls)
+    return _answer(user_input, local_data, web_data, replay)
 
 
 # =====================================
-# REPEAT SEARCH
+# REPEAT
 # =====================================
 
-def repeat_last_search(
-    replay: dict | None,
-    exclude_names=None,
-    exclude_urls=None,
-):
+def repeat_last_search(replay, exclude_names=None, exclude_urls=None):
     if not replay:
         return None
 
@@ -261,54 +182,23 @@ def repeat_last_search(
 
     if kind == "preset_category":
         category = replay.get("category")
-        query = replay.get("query")
 
-        local_data = local_search(
-            category=category,
-            query=query,
-            exclude_names=exclude_names,
-        )
+        local_data = local_search(category, replay.get("query"), exclude_names)
+        web_data = _fetch_web(replay.get("query", ""), replay) if _should_fallback(local_data) else None
 
-        web_data = _fetch_web_fallback(
-            f"{category}: {query}",
-            replay,
-            exclude_urls,
-        )
-
-        return _answer_dict(
-            f"{category}: {query}",
-            local_data,
-            web_data,
-            replay,
-            exclude_urls,
-        )
+        return _answer(replay.get("query", ""), local_data, web_data, replay)
 
     if kind == "mixed_random":
-        local_data = random_initiatives(
-            limit=3,
-            category=None,
-            exclude_names=exclude_names,
-        )
+        local_data = random_initiatives(limit=5, category=None, exclude_names=exclude_names)
+        web_data = _fetch_web("good deed", replay) if _should_fallback(local_data) else None
 
-        web_data = _fetch_web_fallback(
-            "Suggest a good deed",
-            replay,
-            exclude_urls,
-        )
-
-        return _answer_dict(
-            "Suggest a good deed",
-            local_data,
-            web_data,
-            replay,
-            exclude_urls,
-        )
+        return _answer("good deed", local_data, web_data, replay)
 
     if kind == "freeform":
         return run_workflow(
             replay.get("user_input", ""),
-            exclude_names=exclude_names,
-            exclude_urls=exclude_urls,
+            exclude_names,
+            exclude_urls,
         )
 
     return None
