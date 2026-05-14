@@ -1,8 +1,10 @@
+import uuid
 from app.agent.nodes.intent import analyze_intent
 from app.agent.nodes.clarify import ask_clarification
 from app.agent.nodes.local_search import local_search, random_initiatives
 from app.agent.nodes.web_search import web_search
 from app.agent.nodes.synthesis import synthesize_advisory
+from app.utils.logger import logger
 
 
 # =====================================
@@ -51,9 +53,6 @@ def _dedupe(items):
 
 
 def _should_fallback(local_data):
-    """
-    SINGLE source of truth for web fallback logic
-    """
     return not local_data or len(local_data) < 2
 
 
@@ -66,6 +65,8 @@ def _fetch_web(user_input, replay):
 
     q = query_map.get(replay.get("kind"), f"{user_input} volunteer NGO")
 
+    logger.info(f"[WEB] CALL query={q}")
+
     return web_search(q)
 
 
@@ -73,11 +74,17 @@ def _fetch_web(user_input, replay):
 # CORE
 # =====================================
 
-def _answer(user_input, local_data, web_data, replay):
+def _answer(user_input, local_data, web_data, replay, trace_id=None):
+
     local_items = local_data or []
     web_items = _web_results_as_items(web_data)
 
     data = _dedupe(local_items + web_items)
+
+    logger.info(
+        f"[WF FINAL {trace_id}] items={len(data)} "
+        f"local={len(local_items)} web={len(web_items)}"
+    )
 
     if not data:
         return {
@@ -106,68 +113,122 @@ def _answer(user_input, local_data, web_data, replay):
 # =====================================
 
 def run_workflow(user_input, exclude_names=None, exclude_urls=None):
+
+    trace_id = str(uuid.uuid4())[:8]
     text = user_input.lower().strip()
 
-    # -------------------------
-    # FAST PATHS
-    # -------------------------
+    logger.info(f"[WF {trace_id}] INPUT: {user_input}")
 
+    # -------------------------
+    # 🐾 ANIMALS
+    # -------------------------
     if "help animals" in text or "🐾" in text:
         category = "Animals"
         query = "cats dogs rescue stray animals"
 
         local_data = local_search(category, query, exclude_names)
+        logger.info(f"[WF {trace_id}] LOCAL Animals count={len(local_data)}")
+
         replay = {"kind": "preset_category", "category": category}
 
-        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
-        return _answer(user_input, local_data, web_data, replay)
+        if _should_fallback(local_data):
+            logger.info(f"[WF {trace_id}] WEB FALLBACK TRIGGERED (local={len(local_data)})")
+            web_data = _fetch_web(user_input, replay)
+        else:
+            logger.info(f"[WF {trace_id}] WEB SKIPPED (local={len(local_data)})")
+            web_data = None
 
+        return _answer(user_input, local_data, web_data, replay, trace_id)
+
+    # -------------------------
+    # 🌍 ENVIRONMENT
+    # -------------------------
     if "help environment" in text or "🌍" in text:
         category = "Environment"
         query = "cleanup trees ecology"
 
         local_data = local_search(category, query, exclude_names)
+        logger.info(f"[WF {trace_id}] LOCAL Environment count={len(local_data)}")
+
         replay = {"kind": "preset_category", "category": category}
 
-        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
-        return _answer(user_input, local_data, web_data, replay)
+        if _should_fallback(local_data):
+            logger.info(f"[WF {trace_id}] WEB FALLBACK TRIGGERED (local={len(local_data)})")
+            web_data = _fetch_web(user_input, replay)
+        else:
+            logger.info(f"[WF {trace_id}] WEB SKIPPED (local={len(local_data)})")
+            web_data = None
 
+        return _answer(user_input, local_data, web_data, replay, trace_id)
+
+    # -------------------------
+    # 🤝 COMMUNITY
+    # -------------------------
     if "help people" in text or "🤝" in text:
         category = "Community"
         query = "community homeless elderly refugees"
 
         local_data = local_search(category, query, exclude_names)
+        logger.info(f"[WF {trace_id}] LOCAL Community count={len(local_data)}")
+
         replay = {"kind": "preset_category", "category": category}
 
-        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
-        return _answer(user_input, local_data, web_data, replay)
+        if _should_fallback(local_data):
+            logger.info(f"[WF {trace_id}] WEB FALLBACK TRIGGERED (local={len(local_data)})")
+            web_data = _fetch_web(user_input, replay)
+        else:
+            logger.info(f"[WF {trace_id}] WEB SKIPPED (local={len(local_data)})")
+            web_data = None
 
+        return _answer(user_input, local_data, web_data, replay, trace_id)
+
+    # -------------------------
+    # 🌱 RANDOM
+    # -------------------------
     if "suggest" in text or "good deed" in text:
+
         local_data = random_initiatives(limit=5, category=None, exclude_names=exclude_names)
+        logger.info(f"[WF {trace_id}] RANDOM count={len(local_data)}")
+
         replay = {"kind": "mixed_random"}
 
-        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
-        return _answer(user_input, local_data, web_data, replay)
+        if _should_fallback(local_data):
+            logger.info(f"[WF {trace_id}] WEB FALLBACK TRIGGERED (local={len(local_data)})")
+            web_data = _fetch_web(user_input, replay)
+        else:
+            logger.info(f"[WF {trace_id}] WEB SKIPPED (local={len(local_data)})")
+            web_data = None
+
+        return _answer(user_input, local_data, web_data, replay, trace_id)
 
     # -------------------------
-    # INTENT FLOW
+    # 🧠 INTENT FLOW
     # -------------------------
-
     intent = analyze_intent(user_input)
+    logger.info(f"[WF {trace_id}] INTENT: {intent}")
 
     if intent.get("needs_clarification"):
+        logger.info(f"[WF {trace_id}] CLARIFICATION TRIGGERED")
         return ask_clarification(intent)
 
     category = intent.get("category")
     keywords = intent.get("keywords", [])
 
+    logger.info(f"[WF {trace_id}] FREEFORM category={category}, keywords={keywords}")
+
     local_data = local_search(category, " ".join(keywords), exclude_names)
+    logger.info(f"[WF {trace_id}] LOCAL Freeform count={len(local_data)}")
 
     replay = {"kind": "freeform", "user_input": user_input}
 
-    web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
+    if _should_fallback(local_data):
+        logger.info(f"[WF {trace_id}] WEB FALLBACK TRIGGERED (local={len(local_data)})")
+        web_data = _fetch_web(user_input, replay)
+    else:
+        logger.info(f"[WF {trace_id}] WEB SKIPPED (local={len(local_data)})")
+        web_data = None
 
-    return _answer(user_input, local_data, web_data, replay)
+    return _answer(user_input, local_data, web_data, replay, trace_id)
 
 
 # =====================================
@@ -175,24 +236,38 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 # =====================================
 
 def repeat_last_search(replay, exclude_names=None, exclude_urls=None):
+
     if not replay:
         return None
 
     kind = replay.get("kind")
 
+    trace_id = str(uuid.uuid4())[:8]
+    logger.info(f"[WF REPEAT {trace_id}] kind={kind}")
+
     if kind == "preset_category":
         category = replay.get("category")
 
         local_data = local_search(category, replay.get("query"), exclude_names)
-        web_data = _fetch_web(replay.get("query", ""), replay) if _should_fallback(local_data) else None
+        logger.info(f"[WF REPEAT {trace_id}] LOCAL count={len(local_data)}")
 
-        return _answer(replay.get("query", ""), local_data, web_data, replay)
+        if _should_fallback(local_data):
+            web_data = _fetch_web(replay.get("query", ""), replay)
+        else:
+            web_data = None
+
+        return _answer(replay.get("query", ""), local_data, web_data, replay, trace_id)
 
     if kind == "mixed_random":
         local_data = random_initiatives(limit=5, category=None, exclude_names=exclude_names)
-        web_data = _fetch_web("good deed", replay) if _should_fallback(local_data) else None
+        logger.info(f"[WF REPEAT {trace_id}] RANDOM count={len(local_data)}")
 
-        return _answer("good deed", local_data, web_data, replay)
+        if _should_fallback(local_data):
+            web_data = _fetch_web("good deed", replay)
+        else:
+            web_data = None
+
+        return _answer("good deed", local_data, web_data, replay, trace_id)
 
     if kind == "freeform":
         return run_workflow(
