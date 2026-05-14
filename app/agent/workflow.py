@@ -6,7 +6,24 @@ from app.agent.nodes.synthesis import synthesize_advisory
 from app.utils.logger import logger
 
 
+# =====================================
+# GEO FILTER (BELGRADE CONTEXT)
+# =====================================
+
+BELGRADE_HINTS = [
+    "serbia",
+    "belgrade",
+    "beograd",
+    "rs",
+]
+
+
+# =====================================
+# WEB NORMALIZATION
+# =====================================
+
 def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
+
     if not web_data or not isinstance(web_data, dict):
         return []
 
@@ -16,6 +33,16 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
 
     for r in raw[:max_raw]:
         if not isinstance(r, dict):
+            continue
+
+        text_blob = " ".join([
+            str(r.get("name", "")),
+            str(r.get("description", "")),
+            str(r.get("website", "")),
+        ]).lower()
+
+        # 🔥 GEO FILTER (IMPORTANT)
+        if not any(hint in text_blob for hint in BELGRADE_HINTS):
             continue
 
         items.append({
@@ -30,38 +57,64 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
     return items
 
 
+# =====================================
+# DEDUPE
+# =====================================
+
 def _dedupe(items):
     seen = set()
     out = []
 
     for i in items:
-        key = (i.get("name") or i.get("website") or "").strip().lower()
+        key = (
+            (i.get("name") or "").strip().lower(),
+            (i.get("website") or "").strip().lower()
+        )
+
         if not key or key in seen:
             continue
+
         seen.add(key)
         out.append(i)
 
     return out
 
 
+# =====================================
+# FALLBACK RULE
+# =====================================
+
 def _should_fallback(local_data):
     return len(local_data or []) < 2
 
 
+# =====================================
+# WEB FETCH (GEO-ENHANCED)
+# =====================================
+
 def _fetch_web(user_input, replay):
 
+    base_geo = "Belgrade Serbia"
+
     query_map = {
-        "preset_category": f"{user_input} NGO volunteer Serbia Belgrade",
-        "mixed_random": f"{user_input} volunteer help Serbia NGO",
-        "freeform": f"{user_input} NGO volunteer help",
+        "preset_category": f"{user_input} volunteer NGO animal shelter {base_geo}",
+        "mixed_random": f"{user_input} volunteering NGOs charities {base_geo}",
+        "freeform": f"{user_input} NGO volunteering organizations {base_geo}",
     }
 
-    q = query_map.get(replay.get("kind"), f"{user_input} NGO volunteer")
+    q = query_map.get(
+        replay.get("kind"),
+        f"{user_input} volunteer NGO {base_geo}"
+    )
 
-    logger.info(f"[WF WEB CALL] query={q}")
+    logger.info(f"[WF WEB CALL GEO] query={q}")
 
     return web_search(q)
 
+
+# =====================================
+# ANSWER BUILDER
+# =====================================
 
 def _answer(user_input, local_data, web_data, replay):
 
@@ -91,6 +144,10 @@ def _answer(user_input, local_data, web_data, replay):
         "replay": replay,
     }
 
+
+# =====================================
+# MAIN WORKFLOW
+# =====================================
 
 def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
@@ -139,6 +196,10 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     return _answer(user_input, local_data, web_data, replay)
 
+
+# =====================================
+# REPEAT
+# =====================================
 
 def repeat_last_search(replay, exclude_names=None, exclude_urls=None):
 
