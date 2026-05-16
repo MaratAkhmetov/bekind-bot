@@ -78,6 +78,21 @@ Do NOT sound corporate or robotic.
 
 ---
 
+LINK OUTPUT RULE:
+
+You MUST always output links exactly as provided in the JSON.
+
+If a field exists:
+- website → must be printed
+- instagram → must be printed
+- facebook → must be printed if present
+
+Do not summarize or omit links.
+
+Never replace links with phrases like "check their website" or "follow them online".
+
+---
+
 FORMAT RULES:
 
 Do NOT use any markdown formatting.
