@@ -94,11 +94,6 @@ Use plain text only.
 
 ---
 
-IMPORTANT:
-All links are handled externally by the system and must NOT appear in model output.
-
----
-
 STRUCTURE:
 
 User message:
