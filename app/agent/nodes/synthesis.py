@@ -9,22 +9,36 @@ MAX_ITEMS = 3
 def _inject_links(text: str, items: list) -> str:
     """
     ALWAYS deterministic link injection (no LLM involvement).
+    Now structure-agnostic and bulletproof.
     """
 
-    blocks = text.split("\n\n")
+    # split into numbered blocks safely
+    raw_blocks = []
+    current = []
+
+    for line in text.split("\n"):
+        if line.strip().startswith(("1.", "2.", "3.")):
+            if current:
+                raw_blocks.append("\n".join(current).strip())
+                current = []
+        current.append(line)
+
+    if current:
+        raw_blocks.append("\n".join(current).strip())
+
+    # HARD GUARANTEE: exactly 3 blocks
+    raw_blocks = raw_blocks[:MAX_ITEMS]
+    while len(raw_blocks) < MAX_ITEMS:
+        raw_blocks.append("")
+
     result = []
 
     for i, item in enumerate(items[:MAX_ITEMS]):
-        block = blocks[i] if i < len(blocks) else ""
+        block = raw_blocks[i] if i < len(raw_blocks) else ""
 
         website = item.get("website")
         instagram = item.get("instagram")
         facebook = item.get("facebook")
-
-        # FIXED PRIORITY RULE
-        # website always
-        # instagram always
-        # facebook only if no instagram
 
         links = []
 
@@ -41,7 +55,7 @@ def _inject_links(text: str, items: list) -> str:
 
         result.append(block.strip())
 
-    return "\n\n".join(result) + "\n\n💚 Small actions create real impact."
+    return "\n\n\n".join(result) + "\n\n💚 Small actions create real impact."
 
 
 def synthesize_answer(user_input, local_data, web_data):
@@ -51,9 +65,15 @@ def synthesize_answer(user_input, local_data, web_data):
     if not data:
         return "No initiatives found."
 
+    items = data[:MAX_ITEMS]
+
+    # HARD FIX: ensure always 3
+    while len(items) < MAX_ITEMS:
+        items.append({})
+
     text = "Here are real initiatives you can support:\n\n"
 
-    for i, item in enumerate(data[:MAX_ITEMS], start=1):
+    for i, item in enumerate(items, start=1):
         name = item.get("name", "Unknown")
         description = item.get("description", "")
 
@@ -92,19 +112,17 @@ def synthesize_advisory(user_input, local_data, web_data):
     if not data:
         return "No initiatives found."
 
-    # 🔥 HARD GUARANTEE: always exactly 3 items
     items = list(data[:MAX_ITEMS])
 
-    # pad if needed (CRITICAL FIX)
+    # HARD GUARANTEE: always 3 items
     while len(items) < MAX_ITEMS:
         items.append({})
 
     organizations_json = _items_payload(items)
-    n = len(items)
 
     prompt = ADVISORY_SYNTHESIS_PROMPT.format(
         user_input=user_input,
-        n=n,
+        n=len(items),
         organizations_json=organizations_json,
     )
 

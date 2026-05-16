@@ -18,13 +18,13 @@ Categories (pick the closest, based on meaning):
 
 Respond ONLY with valid JSON (no markdown, no explanations, no extra text). Ensure your JSON is syntactically correct.
 
-{{
+{
   "intent": "short summary label or phrase",
   "category": "animals | environment | community | unclear",
   "action_type": "volunteering | donation | awareness | info | mixed",
   "needs_clarification": false,
   "keywords": ["key1", "key2"]
-}}
+}
 
 Rules for needs_clarification:
 - false → user has a clear actionable goal (e.g., donate clothes, help animals, volunteer with refugees, provide support)
@@ -114,6 +114,22 @@ Make it concrete and actionable.
 
 ---
 
+CRITICAL OUTPUT RULE:
+You MUST return EXACTLY 3 organizations.
+Each must be clearly separated as:
+1. Name
+Description
+
+2. Name
+Description
+
+3. Name
+Description
+
+No merging. No skipping. No extra sections.
+
+---
+
 STYLE EXAMPLES:
 
 "They often need temporary foster homes for rescued cats."
@@ -122,10 +138,6 @@ STYLE EXAMPLES:
 "This group regularly cares for injured street animals and always needs volunteers."
 
 ---
-
-+ NEW CRITICAL RULE:
-Return EXACTLY 3 organizations in the response.
-Never more, never less.
 
 Finish with exactly:
 
