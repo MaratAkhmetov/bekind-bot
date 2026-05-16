@@ -8,11 +8,15 @@ MAX_ITEMS = 3
 
 def _inject_links(text: str, items: list) -> str:
     """
-    ALWAYS deterministic link injection (no LLM involvement).
-    Now structure-agnostic and bulletproof.
+    STRICT STRUCTURE PARSER (final stable version)
     """
 
-    # split into numbered blocks safely
+    FOOTER = "💚 Small actions create real impact."
+
+    # 1. remove duplicated footer from LLM output
+    text = text.replace(FOOTER, "").strip()
+
+    # 2. split into logical blocks
     raw_blocks = []
     current = []
 
@@ -26,9 +30,9 @@ def _inject_links(text: str, items: list) -> str:
     if current:
         raw_blocks.append("\n".join(current).strip())
 
-    # HARD GUARANTEE: exactly 3 blocks
-    raw_blocks = raw_blocks[:MAX_ITEMS]
-    while len(raw_blocks) < MAX_ITEMS:
+    # 3. HARD GUARANTEE: exactly 3 blocks
+    raw_blocks = raw_blocks[:3]
+    while len(raw_blocks) < 3:
         raw_blocks.append("")
 
     result = []
@@ -55,7 +59,8 @@ def _inject_links(text: str, items: list) -> str:
 
         result.append(block.strip())
 
-    return "\n\n\n".join(result) + "\n\n💚 Small actions create real impact."
+    # 4. single clean footer at the end
+    return "\n\n\n".join(result).strip() + "\n\n" + FOOTER
 
 
 def synthesize_answer(user_input, local_data, web_data):
