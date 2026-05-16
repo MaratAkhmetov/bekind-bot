@@ -130,11 +130,8 @@ overly formal language
 
 LINK RULES:
 
-After each organization:
-
-print 🌐 Website: if website exists
-print 📸 Instagram: if instagram exists
-print 📘 Facebook: only if facebook exists AND instagram is empty
+Do NOT output any links (website, instagram, facebook).
+All links will be appended by system code.
 
 Do not modify links.
 
