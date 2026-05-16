@@ -6,45 +6,56 @@ from app.services.llm import generate_text
 MAX_ITEMS = 3
 
 
-def _inject_links(text: str, items: list) -> str:
+def _build_intro(user_input: str) -> str:
+    text = user_input.lower()
+
+    if "animal" in text or "🐾" in text:
+        return "Here are some ways you can help animals in Belgrade:"
+    if "environment" in text or "🌍" in text:
+        return "If you’d like to support the environment in Belgrade, here are a few real initiatives:"
+    if "community" in text or "people" in text or "help people" in text:
+        return "Here are meaningful ways to help people in your community:"
+
+    return "Here are real ways you can make a positive impact:"
+
+
+def _inject_links(text: str, items: list, user_input: str) -> str:
     """
-    STRICT POSITIONAL LINK INJECTION (stable + no footer duplication issues)
+    STRICT POSITIONAL LINK INJECTION (stable version + intro protection)
     """
 
     FOOTER = "💚 Small actions create real impact."
-
-    # remove any accidental footer duplicates from LLM
     text = text.replace(FOOTER, "").strip()
 
     lines = text.split("\n")
 
-    blocks = []
+    result_blocks = []
     current = []
 
     for line in lines:
         if line.strip().startswith(("1.", "2.", "3.")):
             if current:
-                blocks.append("\n".join(current).strip())
+                result_blocks.append("\n".join(current).strip())
                 current = []
         current.append(line)
 
     if current:
-        blocks.append("\n".join(current).strip())
+        result_blocks.append("\n".join(current).strip())
 
-    # keep only numbered org blocks
-    org_blocks = [
-        b for b in blocks
-        if any(b.strip().startswith(f"{i}.") for i in range(1, 10))
-    ][:MAX_ITEMS]
+    org_blocks = []
+    for b in result_blocks:
+        if any(b.strip().startswith(f"{i}.") for i in range(1, 10)):
+            org_blocks.append(b)
 
-    # ensure exactly 3 blocks
-    while len(org_blocks) < MAX_ITEMS:
+    org_blocks = org_blocks[:3]
+
+    while len(org_blocks) < 3:
         org_blocks.append("")
 
     final = []
 
     for i, item in enumerate(items[:MAX_ITEMS]):
-        block = org_blocks[i]
+        block = org_blocks[i] if i < len(org_blocks) else ""
 
         website = item.get("website")
         instagram = item.get("instagram")
@@ -65,7 +76,16 @@ def _inject_links(text: str, items: list) -> str:
 
         final.append(block.strip())
 
-    return "\n\n\n".join(final).strip() + "\n\n" + FOOTER
+    result = "\n\n\n".join(final).strip()
+
+    # 🔥 CRITICAL FIX: ensure intro ALWAYS exists
+    first_line = result.split("\n", 1)[0].strip() if result else ""
+
+    if first_line.startswith(("1.", "2.", "3.")):
+        intro = _build_intro(user_input)
+        result = intro + "\n\n" + result
+
+    return result + "\n\n" + FOOTER
 
 
 def synthesize_answer(user_input, local_data, web_data):
@@ -74,12 +94,12 @@ def synthesize_answer(user_input, local_data, web_data):
     if not data:
         return "No initiatives found."
 
-    items = list(data[:MAX_ITEMS])
+    items = data[:MAX_ITEMS]
 
     while len(items) < MAX_ITEMS:
         items.append({})
 
-    text = "Here are real initiatives you can support:\n\n"
+    text = _build_intro(user_input) + "\n\n"
 
     for i, item in enumerate(items, start=1):
         name = item.get("name", "Unknown")
@@ -143,7 +163,7 @@ def synthesize_advisory(user_input, local_data, web_data):
         if "I'm having trouble processing this right now" in out_s:
             raise ValueError("llm soft fail")
 
-        return _inject_links(out_s, items)
+        return _inject_links(out_s, items, user_input)
 
     except Exception:
         return synthesize_answer(user_input, local_data, web_data)
