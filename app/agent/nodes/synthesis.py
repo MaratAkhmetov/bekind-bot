@@ -8,44 +8,43 @@ MAX_ITEMS = 3
 
 def _inject_links(text: str, items: list) -> str:
     """
-    STRICT POSITIONAL LINK INJECTION (stable version)
+    STRICT POSITIONAL LINK INJECTION (stable + no footer duplication issues)
     """
 
     FOOTER = "💚 Small actions create real impact."
 
+    # remove any accidental footer duplicates from LLM
     text = text.replace(FOOTER, "").strip()
 
     lines = text.split("\n")
 
-    result_blocks = []
+    blocks = []
     current = []
 
     for line in lines:
-        # detect start of org block
         if line.strip().startswith(("1.", "2.", "3.")):
             if current:
-                result_blocks.append("\n".join(current).strip())
+                blocks.append("\n".join(current).strip())
                 current = []
         current.append(line)
 
     if current:
-        result_blocks.append("\n".join(current).strip())
+        blocks.append("\n".join(current).strip())
 
-    # keep ONLY real org blocks (skip intro garbage)
-    org_blocks = []
-    for b in result_blocks:
-        if any(b.strip().startswith(f"{i}.") for i in range(1, 10)):
-            org_blocks.append(b)
+    # keep only numbered org blocks
+    org_blocks = [
+        b for b in blocks
+        if any(b.strip().startswith(f"{i}.") for i in range(1, 10))
+    ][:MAX_ITEMS]
 
-    org_blocks = org_blocks[:3]
-
-    while len(org_blocks) < 3:
+    # ensure exactly 3 blocks
+    while len(org_blocks) < MAX_ITEMS:
         org_blocks.append("")
 
     final = []
 
     for i, item in enumerate(items[:MAX_ITEMS]):
-        block = org_blocks[i] if i < len(org_blocks) else ""
+        block = org_blocks[i]
 
         website = item.get("website")
         instagram = item.get("instagram")
@@ -70,15 +69,13 @@ def _inject_links(text: str, items: list) -> str:
 
 
 def synthesize_answer(user_input, local_data, web_data):
-
     data = local_data if local_data else web_data if web_data else []
 
     if not data:
         return "No initiatives found."
 
-    items = data[:MAX_ITEMS]
+    items = list(data[:MAX_ITEMS])
 
-    # HARD FIX: ensure always 3
     while len(items) < MAX_ITEMS:
         items.append({})
 
@@ -117,7 +114,6 @@ def _items_payload(items):
 
 
 def synthesize_advisory(user_input, local_data, web_data):
-
     data = local_data if local_data else web_data if web_data else []
 
     if not data:
@@ -125,7 +121,6 @@ def synthesize_advisory(user_input, local_data, web_data):
 
     items = list(data[:MAX_ITEMS])
 
-    # HARD GUARANTEE: always 3 items
     while len(items) < MAX_ITEMS:
         items.append({})
 
