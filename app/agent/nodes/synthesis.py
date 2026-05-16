@@ -8,37 +8,44 @@ MAX_ITEMS = 3
 
 def _inject_links(text: str, items: list) -> str:
     """
-    STRICT STRUCTURE PARSER (final stable version)
+    STRICT POSITIONAL LINK INJECTION (stable version)
     """
 
     FOOTER = "💚 Small actions create real impact."
 
-    # 1. remove duplicated footer from LLM output
     text = text.replace(FOOTER, "").strip()
 
-    # 2. split into logical blocks
-    raw_blocks = []
+    lines = text.split("\n")
+
+    result_blocks = []
     current = []
 
-    for line in text.split("\n"):
+    for line in lines:
+        # detect start of org block
         if line.strip().startswith(("1.", "2.", "3.")):
             if current:
-                raw_blocks.append("\n".join(current).strip())
+                result_blocks.append("\n".join(current).strip())
                 current = []
         current.append(line)
 
     if current:
-        raw_blocks.append("\n".join(current).strip())
+        result_blocks.append("\n".join(current).strip())
 
-    # 3. HARD GUARANTEE: exactly 3 blocks
-    raw_blocks = raw_blocks[:3]
-    while len(raw_blocks) < 3:
-        raw_blocks.append("")
+    # keep ONLY real org blocks (skip intro garbage)
+    org_blocks = []
+    for b in result_blocks:
+        if any(b.strip().startswith(f"{i}.") for i in range(1, 10)):
+            org_blocks.append(b)
 
-    result = []
+    org_blocks = org_blocks[:3]
+
+    while len(org_blocks) < 3:
+        org_blocks.append("")
+
+    final = []
 
     for i, item in enumerate(items[:MAX_ITEMS]):
-        block = raw_blocks[i] if i < len(raw_blocks) else ""
+        block = org_blocks[i] if i < len(org_blocks) else ""
 
         website = item.get("website")
         instagram = item.get("instagram")
@@ -57,10 +64,9 @@ def _inject_links(text: str, items: list) -> str:
         if links:
             block += "\n\n" + "\n".join(links)
 
-        result.append(block.strip())
+        final.append(block.strip())
 
-    # 4. single clean footer at the end
-    return "\n\n\n".join(result).strip() + "\n\n" + FOOTER
+    return "\n\n\n".join(final).strip() + "\n\n" + FOOTER
 
 
 def synthesize_answer(user_input, local_data, web_data):
