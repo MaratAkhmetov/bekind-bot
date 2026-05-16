@@ -96,6 +96,14 @@ Use plain text only.
 
 STRUCTURE:
 
+First line MUST be a natural intro sentence (1 line only).
+It must match user intent and vary each time.
+
+Examples:
+- "Here are some ways you can help animals in Belgrade:"
+- "If you’d like to support the environment, here are a few real initiatives:"
+- "Here are meaningful ways to help people in your community:"
+
 User message:
 {user_input}
 
