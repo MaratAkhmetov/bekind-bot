@@ -92,7 +92,13 @@ def synthesize_advisory(user_input, local_data, web_data):
     if not data:
         return "No initiatives found."
 
+    # 🔥 HARD GUARANTEE: always exactly 3 items
     items = list(data[:MAX_ITEMS])
+
+    # pad if needed (CRITICAL FIX)
+    while len(items) < MAX_ITEMS:
+        items.append({})
+
     organizations_json = _items_payload(items)
     n = len(items)
 
@@ -113,7 +119,6 @@ def synthesize_advisory(user_input, local_data, web_data):
         if "I'm having trouble processing this right now" in out_s:
             raise ValueError("llm soft fail")
 
-        # 🔥 CRITICAL FIX: ALWAYS inject links here
         return _inject_links(out_s, items)
 
     except Exception:

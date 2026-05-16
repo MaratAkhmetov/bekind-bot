@@ -123,6 +123,10 @@ STYLE EXAMPLES:
 
 ---
 
++ NEW CRITICAL RULE:
+Return EXACTLY 3 organizations in the response.
+Never more, never less.
+
 Finish with exactly:
 
 💚 Small actions create real impact.
