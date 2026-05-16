@@ -27,6 +27,7 @@ def synthesize_answer(user_input, local_data, web_data):
         text += f"{i}. {name}\n"
         text += f"{description}\n"
 
+        # 🔥 FIXED RULE: deterministic priority
         if website:
             text += f"🌐 Website: {website}\n"
 
@@ -61,10 +62,7 @@ def _items_payload(items):
 
 
 def synthesize_advisory(user_input, local_data, web_data):
-    """
-    Friendly advisory tone via LLM using ADVISORY_SYNTHESIS_PROMPT.
-    Falls back to synthesize_answer if the model fails.
-    """
+
     data = local_data if local_data else web_data if web_data else []
 
     if not data:
@@ -82,11 +80,16 @@ def synthesize_advisory(user_input, local_data, web_data):
 
     try:
         out = generate_text(prompt)
+
         if not out or not str(out).strip():
             raise ValueError("empty llm")
+
         out_s = str(out).strip()
+
         if "I'm having trouble processing this right now" in out_s:
             raise ValueError("llm api soft fail")
+
         return out_s
+
     except Exception:
         return synthesize_answer(user_input, local_data, web_data)
