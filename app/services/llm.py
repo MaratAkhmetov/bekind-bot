@@ -1,34 +1,56 @@
-import google.generativeai as genai
-from app.config import GEMINI_API_KEY
+import os
+import logging
+from mistralai import Mistral
 
-genai.configure(api_key=GEMINI_API_KEY)
+from app.config import MISTRAL_API_KEY
 
-model = genai.GenerativeModel("gemini-1.5-flash")
+logger = logging.getLogger(__name__)
+
+# =========================
+# Init Mistral client
+# =========================
+client = Mistral(api_key=MISTRAL_API_KEY)
+
+MODEL_NAME = "mistral-small-latest"
 
 
 def generate_text(prompt: str) -> str:
+    """
+    Generates text using Mistral model for synthesis layer.
+    """
 
     try:
+        logger.info(f"[LLM] Using model: {MODEL_NAME}")
 
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.8,
-                "top_p": 0.9,
-                "max_output_tokens": 700,
-            }
+        response = client.chat.complete(
+            model=MODEL_NAME,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.8,
+            top_p=0.9,
+            max_tokens=700,
         )
 
-        print("\n========== GEMINI RESPONSE ==========")
-        print(response.text)
-        print("=====================================\n")
+        text = response.choices[0].message.content
 
-        return response.text
+        logger.info("[LLM] Response generated successfully")
+
+        print("\n========== LLM RESPONSE ==========")
+        print(text)
+        print("==================================\n")
+
+        return text.strip()
 
     except Exception as e:
 
-        print("\n========== GEMINI ERROR ==========")
+        logger.error(f"[LLM ERROR] {str(e)}")
+
+        print("\n========== LLM ERROR ==========")
         print(str(e))
-        print("==================================\n")
+        print("================================\n")
 
         return "I'm having trouble processing this right now. Try again."
