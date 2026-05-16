@@ -6,6 +6,44 @@ from app.services.llm import generate_text
 MAX_ITEMS = 3
 
 
+def _inject_links(text: str, items: list) -> str:
+    """
+    ALWAYS deterministic link injection (no LLM involvement).
+    """
+
+    blocks = text.split("\n\n")
+    result = []
+
+    for i, item in enumerate(items[:MAX_ITEMS]):
+        block = blocks[i] if i < len(blocks) else ""
+
+        website = item.get("website")
+        instagram = item.get("instagram")
+        facebook = item.get("facebook")
+
+        # FIXED PRIORITY RULE
+        # website always
+        # instagram always
+        # facebook only if no instagram
+
+        links = []
+
+        if website:
+            links.append(website)
+
+        if instagram:
+            links.append(instagram)
+        elif facebook:
+            links.append(facebook)
+
+        if links:
+            block += "\n\n" + "\n".join(links)
+
+        result.append(block.strip())
+
+    return "\n\n".join(result) + "\n\n💚 Small actions create real impact."
+
+
 def synthesize_answer(user_input, local_data, web_data):
 
     data = local_data if local_data else web_data if web_data else []
@@ -16,27 +54,11 @@ def synthesize_answer(user_input, local_data, web_data):
     text = "Here are real initiatives you can support:\n\n"
 
     for i, item in enumerate(data[:MAX_ITEMS], start=1):
-
         name = item.get("name", "Unknown")
         description = item.get("description", "")
 
-        website = item.get("website")
-        instagram = item.get("instagram")
-        facebook = item.get("facebook")
-
         text += f"{i}. {name}\n"
-        text += f"{description}\n"
-
-        # 🔥 FIXED RULE: deterministic priority
-        if website:
-            text += f"🌐 Website: {website}\n"
-
-        if instagram:
-            text += f"📸 Instagram: {instagram}\n"
-        elif facebook:
-            text += f"📘 Facebook: {facebook}\n"
-
-        text += "\n"
+        text += f"{description}\n\n"
 
     text += "💚 Small actions create real impact."
 
@@ -45,6 +67,7 @@ def synthesize_answer(user_input, local_data, web_data):
 
 def _items_payload(items):
     rows = []
+
     for it in items[:MAX_ITEMS]:
         rows.append(
             {
@@ -58,6 +81,7 @@ def _items_payload(items):
                 "facebook": (it.get("facebook") or "").strip(),
             }
         )
+
     return json.dumps(rows, ensure_ascii=False, indent=2)
 
 
@@ -87,9 +111,10 @@ def synthesize_advisory(user_input, local_data, web_data):
         out_s = str(out).strip()
 
         if "I'm having trouble processing this right now" in out_s:
-            raise ValueError("llm api soft fail")
+            raise ValueError("llm soft fail")
 
-        return out_s
+        # 🔥 CRITICAL FIX: ALWAYS inject links here
+        return _inject_links(out_s, items)
 
     except Exception:
         return synthesize_answer(user_input, local_data, web_data)

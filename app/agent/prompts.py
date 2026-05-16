@@ -78,19 +78,6 @@ Do NOT sound corporate or robotic.
 
 ---
 
-LINK PRIORITY RULE:
-
-You must NOT decide which links to show.
-
-You MUST output all available links exactly as provided in JSON.
-
-Rules:
-- website → always include if exists
-- instagram → always include if exists
-- facebook → include ONLY if instagram is empty
-
----
-
 FORMAT RULES:
 
 Do NOT use any markdown formatting.
