@@ -1,4 +1,5 @@
 import json
+import re
 
 from app.agent.prompts import (
     ADVISORY_SYNTHESIS_PROMPT,
@@ -32,8 +33,20 @@ def _build_intro(user_input: str) -> str:
             if intro.endswith("'."):
                 intro = intro[:-2]
 
+            # HARD CLEAN markdown artifacts (FIX 1)
+            intro = intro.replace("*", "")
+            intro = intro.replace("**", "")
+            intro = intro.replace("_", "")
+
+            # normalize spaces + remove stray quotes/backticks
+            intro = re.sub(r"\s+", " ", intro).strip()
+            intro = re.sub(r"[\"'`]", "", intro)
+
             if not intro.endswith((".", "!", "?")):
                 intro += "."
+
+            # HARD GUARANTEE: absolutely no markdown leftovers
+            intro = intro.replace("*", "").replace("#", "")
 
             return intro
 

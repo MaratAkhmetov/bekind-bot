@@ -169,7 +169,7 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     web_data = None
 
-    if _should_fallback(local_data):
+    if _should_fallback(local_data) and category != "random_good_deed":
         web_data = _fetch_web(user_input, replay)
 
     return _answer(
