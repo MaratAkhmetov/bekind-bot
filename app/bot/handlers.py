@@ -146,8 +146,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if isinstance(result, dict) and result.get("type") == "clarification":
             await update.message.reply_text(
                 result["message"],
-                reply_markup=after_answer_keyboard(),
+                reply_markup=main_keyboard(),
             )
+
             return
 
         if isinstance(result, dict) and result.get("type") == "answer":

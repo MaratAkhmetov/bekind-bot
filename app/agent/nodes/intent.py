@@ -15,7 +15,7 @@ def analyze_intent(user_input: str):
     text = user_input.lower().strip()
 
     # =====================================
-    # BUTTON ROUTING (FAST PATH)
+    # BUTTON ROUTING
     # =====================================
 
     if "🐾" in text or "help animals" in text:
@@ -24,7 +24,10 @@ def analyze_intent(user_input: str):
             "category": "Animals",
             "action_type": "mixed",
             "needs_clarification": False,
-            "keywords": ["cats", "dogs", "stray", "animals", "rescue"]
+            "intent_confidence": 1.0,
+            "is_invalid": False,
+            "is_unsupported": False,
+            "keywords": ["cats", "dogs", "animals", "rescue"]
         }
 
     if "🌍" in text or "help environment" in text:
@@ -33,91 +36,46 @@ def analyze_intent(user_input: str):
             "category": "Environment",
             "action_type": "mixed",
             "needs_clarification": False,
-            "keywords": ["environment", "cleanup", "trees", "ecology"]
+            "intent_confidence": 1.0,
+            "is_invalid": False,
+            "is_unsupported": False,
+            "keywords": ["environment", "cleanup", "trees"]
         }
 
     if (
         "🤝" in text
         or "help people" in text
         or "help community" in text
-        or "people / community" in text
     ):
         return {
             "intent": "community",
             "category": "Community",
             "action_type": "mixed",
             "needs_clarification": False,
-            "keywords": ["community", "homeless", "elderly", "refugees"]
+            "intent_confidence": 1.0,
+            "is_invalid": False,
+            "is_unsupported": False,
+            "keywords": ["community", "elderly", "homeless"]
         }
 
     # =====================================
-    # DONATION FIRST (ВАЖНО)
+    # QUICK INVALID DETECTION
     # =====================================
 
-    if "donate" in text or "donation" in text:
-
-        # animals donation
-        if any(x in text for x in [
-            "cat", "dog", "animal", "stray", "pet"
-        ]):
-            return {
-                "intent": "donation_animals",
-                "category": "Animals",
-                "action_type": "donation",
-                "needs_clarification": False,
-                "keywords": ["cats", "dogs", "animal rescue"]
-            }
-
-        # general donation
+    if len(text) <= 2:
         return {
-            "intent": "donation_community",
-            "category": "Community",
-            "action_type": "donation",
-            "needs_clarification": False,
-            "keywords": ["charity", "help", "community"]
+            "intent": "invalid",
+            "category": "Unclear",
+            "action_type": "info",
+            "needs_clarification": True,
+            "intent_confidence": 0.0,
+            "is_invalid": True,
+            "is_unsupported": False,
+            "keywords": []
         }
 
     # =====================================
-    # RULE-BASED SEARCH
-    # =====================================
-
-    if any(x in text for x in [
-        "cat", "dog", "animal", "stray", "pet"
-    ]):
-        return {
-            "intent": "animals",
-            "category": "Animals",
-            "action_type": "mixed",
-            "needs_clarification": False,
-            "keywords": ["animals"]
-        }
-
-    if any(x in text for x in [
-        "eco", "environment", "tree",
-        "cleanup", "recycle", "ecology"
-    ]):
-        return {
-            "intent": "environment",
-            "category": "Environment",
-            "action_type": "mixed",
-            "needs_clarification": False,
-            "keywords": ["environment"]
-        }
-
-    if any(x in text for x in [
-        "community", "people", "help",
-        "homeless", "elderly", "charity"
-    ]):
-        return {
-            "intent": "community",
-            "category": "Community",
-            "action_type": "mixed",
-            "needs_clarification": False,
-            "keywords": ["community"]
-        }
-
-    # =====================================
-    # LLM FALLBACK
+    # LLM
     # =====================================
 
     try:
@@ -135,25 +93,34 @@ def analyze_intent(user_input: str):
 
         data = json.loads(json_str)
 
-        category = data.get("category")
-
-        # normalize category
         mapping = {
             "animals": "Animals",
             "environment": "Environment",
-            "community": "Community"
+            "community": "Community",
+            "unclear": "Unclear",
         }
 
         category = mapping.get(
-            str(category).lower(),
-            "Community"
+            str(data.get("category", "")).lower(),
+            "Unclear"
         )
 
         return {
             "intent": data.get("intent", "unknown"),
             "category": category,
             "action_type": data.get("action_type", "info"),
-            "needs_clarification": False,
+            "needs_clarification": bool(
+                data.get("needs_clarification", False)
+            ),
+            "intent_confidence": float(
+                data.get("intent_confidence", 0.0)
+            ),
+            "is_invalid": bool(
+                data.get("is_invalid", False)
+            ),
+            "is_unsupported": bool(
+                data.get("is_unsupported", False)
+            ),
             "keywords": data.get("keywords", ["help"])
         }
 
@@ -163,8 +130,11 @@ def analyze_intent(user_input: str):
 
         return {
             "intent": "fallback",
-            "category": "Community",
+            "category": "Unclear",
             "action_type": "info",
-            "needs_clarification": False,
-            "keywords": ["help"]
+            "needs_clarification": True,
+            "intent_confidence": 0.0,
+            "is_invalid": True,
+            "is_unsupported": False,
+            "keywords": []
         }

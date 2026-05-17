@@ -1,14 +1,14 @@
 from app.agent.nodes.intent import analyze_intent
-from app.agent.nodes.clarify import ask_clarification
-from app.agent.nodes.local_search import local_search, random_initiatives
+from app.agent.nodes.clarify import (
+    ask_clarification,
+    should_clarify,
+)
+
+from app.agent.nodes.local_search import local_search
 from app.agent.nodes.web_search import web_search
 from app.agent.nodes.synthesis import synthesize_advisory
 from app.utils.logger import logger
 
-
-# =====================================
-# GEO FILTER (BELGRADE CONTEXT)
-# =====================================
 
 BELGRADE_HINTS = [
     "serbia",
@@ -17,10 +17,6 @@ BELGRADE_HINTS = [
     "rs",
 ]
 
-
-# =====================================
-# WEB NORMALIZATION
-# =====================================
 
 def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
 
@@ -32,6 +28,7 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
     items = []
 
     for r in raw[:max_raw]:
+
         if not isinstance(r, dict):
             continue
 
@@ -41,7 +38,6 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
             str(r.get("website", "")),
         ]).lower()
 
-        # 🔥 GEO FILTER (IMPORTANT)
         if not any(hint in text_blob for hint in BELGRADE_HINTS):
             continue
 
@@ -57,21 +53,19 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
     return items
 
 
-# =====================================
-# DEDUPE
-# =====================================
-
 def _dedupe(items):
+
     seen = set()
     out = []
 
     for i in items:
+
         key = (
             (i.get("name") or "").strip().lower(),
             (i.get("website") or "").strip().lower()
         )
 
-        if not key or key in seen:
+        if key in seen:
             continue
 
         seen.add(key)
@@ -80,25 +74,17 @@ def _dedupe(items):
     return out
 
 
-# =====================================
-# FALLBACK RULE
-# =====================================
-
 def _should_fallback(local_data):
     return len(local_data or []) < 2
 
-
-# =====================================
-# WEB FETCH (GEO-ENHANCED)
-# =====================================
 
 def _fetch_web(user_input, replay):
 
     base_geo = "Belgrade Serbia"
 
     query_map = {
-        "preset_category": f"{user_input} volunteer NGO animal shelter {base_geo}",
-        "mixed_random": f"{user_input} volunteering NGOs charities {base_geo}",
+        "preset_category": f"{user_input} volunteer NGO {base_geo}",
+        "mixed_random": f"{user_input} charities volunteering {base_geo}",
         "freeform": f"{user_input} NGO volunteering organizations {base_geo}",
     }
 
@@ -112,13 +98,11 @@ def _fetch_web(user_input, replay):
     return web_search(q)
 
 
-# =====================================
-# ANSWER BUILDER
-# =====================================
-
 def _answer(user_input, local_data, web_data, replay):
 
-    logger.info(f"[WF ANSWER] local={len(local_data or [])} web={bool(web_data)}")
+    logger.info(
+        f"[WF ANSWER] local={len(local_data or [])} web={bool(web_data)}"
+    )
 
     local_items = local_data or []
     web_items = _web_results_as_items(web_data)
@@ -135,7 +119,11 @@ def _answer(user_input, local_data, web_data, replay):
             "replay": replay,
         }
 
-    text = synthesize_advisory(user_input, local_items, web_items)
+    text = synthesize_advisory(
+        user_input,
+        local_items,
+        web_items
+    )
 
     return {
         "type": "answer",
@@ -145,48 +133,38 @@ def _answer(user_input, local_data, web_data, replay):
     }
 
 
-# =====================================
-# MAIN WORKFLOW
-# =====================================
-
 def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     logger.info(f"[WF INPUT] {user_input}")
 
-    text = user_input.lower().strip()
+    intent = analyze_intent(user_input)
 
-    if "help animals" in text or "🐾" in text:
-        category = "animals"
-        query = "cats dogs rescue"
+    logger.info(f"[WF INTENT] {intent}")
 
-    elif "help environment" in text or "🌍" in text:
-        category = "environment"
-        query = "cleanup trees ecology"
+    if should_clarify(intent):
 
-    elif "help people" in text or "🤝" in text:
-        category = "community"
-        query = "community homeless elderly"
+        logger.info("[WF CLARIFICATION REQUIRED]")
 
-    elif "suggest" in text or "good deed" in text:
-        category = None
-        query = None
+        return ask_clarification(
+            intent,
+            user_input
+        )
 
-    else:
-        intent = analyze_intent(user_input)
-        category = intent.get("category")
-        query = " ".join(intent.get("keywords", []))
+    category = intent.get("category")
+    query = " ".join(intent.get("keywords", []))
 
-        if intent.get("needs_clarification"):
-            return ask_clarification(intent)
-
-    local_data = local_search(category, query, exclude_names)
+    local_data = local_search(
+        category,
+        query,
+        exclude_names
+    )
 
     logger.info(f"[WF LOCAL] {len(local_data)}")
 
     replay = {
         "kind": "freeform",
         "user_input": user_input,
-        "category": category
+        "category": category,
     }
 
     web_data = None
@@ -194,14 +172,19 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
     if _should_fallback(local_data):
         web_data = _fetch_web(user_input, replay)
 
-    return _answer(user_input, local_data, web_data, replay)
+    return _answer(
+        user_input,
+        local_data,
+        web_data,
+        replay
+    )
 
 
-# =====================================
-# REPEAT
-# =====================================
-
-def repeat_last_search(replay, exclude_names=None, exclude_urls=None):
+def repeat_last_search(
+    replay,
+    exclude_names=None,
+    exclude_urls=None
+):
 
     if not replay:
         return None

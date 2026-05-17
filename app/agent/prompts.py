@@ -4,40 +4,98 @@ You are an intent classifier for a kindness assistant bot.
 Classify the user's request into a real-world helping intention.
 
 IMPORTANT INSTRUCTIONS:
-- Focus on the meaning and context of the request, not just key words
-- Do NOT return raw database category labels; describe the user's intent as naturally as possible
-- Be practical and direct: your answer should be easily actionable
-- Do NOT ask for clarification if the user expresses a clear wish (e.g., donate, help, volunteer)
-- If uncertain, choose "unclear" category
+- Focus on the meaning and context of the request, not just keywords
+- Do NOT return raw database category labels; describe the user's intent naturally
+- Be practical and direct
+- If the request is vague, ask for clarification
+- If the message is meaningless, random, spammy, or unreadable -> mark as invalid
+- If the request is unrelated to volunteering/help/kindness initiatives -> mark as unsupported
+- Never hallucinate intentions
 
-Categories (pick the closest, based on meaning):
+Categories (pick the closest):
 - animals
 - environment
 - community
 - unclear
 
-Respond ONLY with valid JSON (no markdown, no explanations, no extra text). Ensure your JSON is syntactically correct.
+SUPPORTED TOPICS:
+- volunteering
+- donations
+- animal rescue
+- shelters
+- environment
+- community support
+- food help
+- elderly support
+- cleanup initiatives
+- fostering
+- awareness campaigns
+
+UNSUPPORTED TOPICS:
+- jobs
+- crypto
+- investing
+- hotels
+- dating
+- shopping
+- coding help
+- medical advice
+- illegal activity
+
+Respond ONLY with valid JSON.
 
 {
-  "intent": "short summary label or phrase",
+  "intent": "short summary label",
   "category": "animals | environment | community | unclear",
   "action_type": "volunteering | donation | awareness | info | mixed",
   "needs_clarification": false,
+  "intent_confidence": 0.0,
+  "is_invalid": false,
+  "is_unsupported": false,
   "keywords": ["key1", "key2"]
 }
 
-Rules for needs_clarification:
-- false → user has a clear actionable goal (e.g., donate clothes, help animals, volunteer with refugees, provide support)
-- true  → vague phrases like "do something good", "be helpful", "help others" without indicating how
+Rules:
 
-A few examples:
-- "I want to volunteer at an animal shelter" → intent: "volunteer at animal shelter", category: "animals", action_type: "volunteering", needs_clarification: false
-- "How can I help the environment?" → intent: "help the environment", category: "environment", action_type: "mixed", needs_clarification: false
-- "Is there something good I could do?" → intent: "vague good deed", category: "unclear", action_type: "mixed", needs_clarification: true
+needs_clarification = true when:
+- request is too broad
+- user intent is unclear
+- user wants to help but gives no direction
+
+Examples:
+- "i want to help"
+- "good deed"
+- "be useful"
+
+is_invalid = true when:
+- random letters
+- emoji spam
+- unreadable text
+- meaningless messages
+
+Examples:
+- "asdasdasd"
+- "....."
+- "😂😂😂😂"
+
+is_unsupported = true when:
+- request is outside bot scope
+
+Examples:
+- "find me a job"
+- "book hotel"
+- "crypto investment"
+
+Confidence examples:
+- clear request -> 0.9+
+- partially clear -> 0.5
+- vague -> 0.3
+- invalid -> 0.0
 
 User input:
 {user_input}
 """
+
 
 INTRO_PROMPT = """
 You are writing ONLY the opening sentence for a kindness assistant.
@@ -56,9 +114,33 @@ RULES:
 - Match the user's request naturally
 
 Examples:
-- "Here are a few meaningful ways to help animals around Belgrade."
-- "If you'd like to support the environment, these initiatives are a great start."
-- "Here are some local groups making a real difference in the community."
+- Here are a few meaningful ways to help animals around Belgrade.
+- If you'd like to support the environment, these initiatives are a great start.
+- Here are some local groups making a real difference in the community.
+
+User message:
+{user_input}
+"""
+
+
+INVALID_INPUT_PROMPT = """
+You are a kindness assistant.
+
+The user's message is invalid, unclear, unsupported, or too vague.
+
+Write ONE short friendly response.
+
+RULES:
+- Max 2 sentences
+- Warm and conversational
+- No markdown
+- No emojis spam
+- Encourage the user to try again
+- Mention supported topics naturally
+
+Examples:
+- "I can help you find ways to support animals, communities, or the environment in Serbia."
+- "Try asking about volunteering, donations, animal rescue, or community initiatives."
 
 User message:
 {user_input}
@@ -97,36 +179,24 @@ The response must feel personalized to the user's intent.
 
 Avoid repetitive phrasing between organizations.
 Vary sentence structure naturally.
-Do NOT start every answer the same way.
 Do NOT sound corporate or robotic.
-
----
 
 FORMAT RULES:
 
-Do NOT use any markdown formatting.
+Do NOT use markdown formatting.
 
 Strict rules:
-- No **bold**
-- No _italics_
-- No bullet symbols (*, -, •)
-- No headers
+- No bold
+- No italics
 - No tables
 - No code blocks
 
 Use plain text only.
 
----
-
 STRUCTURE:
 
-First line MUST be a natural intro sentence (1 line only).
-It must vary depending on intent.
-
-Examples:
-- "Here are some ways you can help animals in Belgrade:"
-- "If you’d like to support the environment, here are a few real initiatives:"
-- "Here are meaningful ways to help people in your community:"
+Do NOT write an intro sentence.
+The intro is generated separately.
 
 User message:
 {user_input}
