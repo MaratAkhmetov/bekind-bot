@@ -53,6 +53,27 @@ def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
     return items
 
 
+def _dedupe(items):
+
+    seen = set()
+    out = []
+
+    for i in items:
+
+        key = (
+            (i.get("name") or "").strip().lower(),
+            (i.get("website") or "").strip().lower()
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        out.append(i)
+
+    return out
+
+
 def _should_fallback(local_data):
     return len(local_data or []) < 2
 
@@ -61,47 +82,66 @@ def _fetch_web(user_input, replay):
 
     base_geo = "Belgrade Serbia"
 
-    q = f"{user_input} volunteering NGOs {base_geo}"
+    query_map = {
+        "preset_category": f"{user_input} volunteer NGO {base_geo}",
+        "mixed_random": f"{user_input} charities volunteering {base_geo}",
+        "freeform": f"{user_input} NGO volunteering organizations {base_geo}",
+    }
 
-    logger.info(f"[WF WEB CALL] query={q}")
+    q = query_map.get(
+        replay.get("kind"),
+        f"{user_input} volunteer NGO {base_geo}"
+    )
+
+    logger.info(f"[WF WEB CALL GEO] query={q}")
 
     return web_search(q)
 
 
-# =========================
-# FIXED: NO FLATTENING HERE
-# =========================
 def _answer(user_input, local_data, web_data, replay):
 
-    logger.info(f"[WF ANSWER] web={bool(web_data)}")
+    logger.info(
+        f"[WF ANSWER] local={len(local_data or {})} web={bool(web_data)}"
+    )
+
+    # =========================
+    # FIX: support structured local_data
+    # =========================
+    if isinstance(local_data, dict):
+        local_items = (
+            local_data.get("animals", [])
+            + local_data.get("environment", [])
+            + local_data.get("community", [])
+        )
+    else:
+        local_items = local_data or []
 
     web_items = _web_results_as_items(web_data)
 
-    # ALWAYS KEEP STRUCTURE
-    if not isinstance(local_data, dict):
-        structured_local = {
-            "animals": local_data or [],
-            "environment": [],
-            "community": []
-        }
-    else:
-        structured_local = local_data
+    # FIX: DO NOT flatten before dedupe incorrectly
+    data = _dedupe(local_items) + web_items
 
-    logger.info(
-        f"[WF STRUCTURE] "
-        f"a={len(structured_local.get('animals', []))} "
-        f"e={len(structured_local.get('environment', []))} "
-        f"c={len(structured_local.get('community', []))}"
+    logger.info(f"[WF FINAL ITEMS] {len(data)}")
+
+    # UX fallback
+    if not data:
+        return {
+            "type": "answer",
+            "text": "I couldn’t find exact matches, but here are some nearby ways to help.",
+            "items": [],
+            "replay": replay,
+        }
+
+    text = synthesize_advisory(
+        user_input,
+        local_items,
+        web_items
     )
 
     return {
         "type": "answer",
-        "text": synthesize_advisory(
-            user_input,
-            structured_local,   # ✅ IMPORTANT
-            web_items
-        ),
-        "items": structured_local,  # ✅ IMPORTANT
+        "text": text,
+        "items": data,
         "replay": replay,
     }
 
@@ -114,6 +154,7 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     logger.info(f"[WF INTENT] {intent}")
 
+    # FIX: soft invalid guard
     if intent.get("is_invalid") and not intent.get("needs_clarification"):
         return {
             "type": "answer",
@@ -125,7 +166,9 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "replay": None,
         }
 
+    # FIX: normalize category
     category = str(intent.get("category", "")).lower()
+
     query = " ".join(intent.get("keywords", []))
 
     replay = {
@@ -134,11 +177,10 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
         "category": category,
     }
 
-    local_data = None
-    web_data = None
+    local_data = {}
 
     # =========================
-    # RANDOM GOOD DEED FIX (MAIN ISSUE AREA)
+    # RANDOM GOOD DEED FIXED STRUCTURE
     # =========================
     if category == "random_good_deed":
 
@@ -150,25 +192,35 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "community": local_search("community", query, exclude_names),
         }
 
-        total = (
+        # ONLY check for web fallback (DO NOT mix into categories)
+        total_local = (
             len(local_data["animals"])
             + len(local_data["environment"])
             + len(local_data["community"])
         )
 
-        # fallback ONLY if weak coverage
-        if total < 2:
+        if total_local < 2:
             web_data = _fetch_web(user_input, replay)
+        else:
+            web_data = None
 
     else:
-
         local_data = local_search(category, query, exclude_names)
 
+        web_data = None
+
+        # fallback enrichment allowed for all non-random cases
         if _should_fallback(local_data):
             web_data = _fetch_web(user_input, replay)
 
-    # clarify ONLY for unclear
-    if should_clarify(intent) and category == "unclear":
+    logger.info(f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}")
+
+    # clarify ONLY for unclear + no data
+    if (
+        should_clarify(intent)
+        and (not local_data or (isinstance(local_data, list) and len(local_data) == 0))
+        and category == "unclear"
+    ):
         return ask_clarification(intent, user_input)
 
     return _answer(
@@ -179,7 +231,11 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
     )
 
 
-def repeat_last_search(replay, exclude_names=None, exclude_urls=None):
+def repeat_last_search(
+    replay,
+    exclude_names=None,
+    exclude_urls=None
+):
 
     if not replay:
         return None
