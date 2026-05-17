@@ -7,9 +7,6 @@ def should_clarify(intent: dict) -> bool:
     if intent.get("is_invalid"):
         return True
 
-    if intent.get("is_unsupported"):
-        return True
-
     if intent.get("needs_clarification"):
         return True
 
@@ -45,16 +42,7 @@ def ask_clarification(intent: dict, user_input: str = ""):
             "type": "clarification",
             "message": (
                 "I didn’t quite understand that message. "
-                "Try asking about animals, environment, or community support."
-            )
-        }
-
-    if intent.get("is_unsupported"):
-        return {
-            "type": "clarification",
-            "message": (
-                "I currently help people discover volunteering, donation, "
-                "and community initiatives in Serbia and Belgrade."
+                "Try asking about animals, environment, or community support in Belgrade."
             )
         }
 
@@ -83,7 +71,7 @@ def ask_clarification(intent: dict, user_input: str = ""):
             "type": "clarification",
             "message": (
                 "Would you like to support homeless people, "
-                "elderly care, food aid, or local community initiatives?"
+                "elderly care, food aid, or local initiatives?"
             )
         }
 

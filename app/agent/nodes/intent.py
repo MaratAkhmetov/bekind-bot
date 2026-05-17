@@ -26,7 +26,8 @@ def analyze_intent(user_input: str):
             "needs_clarification": False,
             "intent_confidence": 1.0,
             "is_invalid": False,
-            "is_unsupported": False,
+            "is_relevant": True,
+            "relevance_confidence": 1.0,
             "keywords": ["cats", "dogs", "animals", "rescue"]
         }
 
@@ -38,7 +39,8 @@ def analyze_intent(user_input: str):
             "needs_clarification": False,
             "intent_confidence": 1.0,
             "is_invalid": False,
-            "is_unsupported": False,
+            "is_relevant": True,
+            "relevance_confidence": 1.0,
             "keywords": ["environment", "cleanup", "trees"]
         }
 
@@ -54,8 +56,38 @@ def analyze_intent(user_input: str):
             "needs_clarification": False,
             "intent_confidence": 1.0,
             "is_invalid": False,
-            "is_unsupported": False,
+            "is_relevant": True,
+            "relevance_confidence": 1.0,
             "keywords": ["community", "elderly", "homeless"]
+        }
+
+    # =====================================
+    # RANDOM GOOD DEED
+    # =====================================
+
+    random_patterns = [
+        "suggest a good deed",
+        "random good deed",
+        "give me ideas",
+        "show me options",
+        "something meaningful",
+        "suggest something kind",
+        "random volunteering",
+        "предложи случайные",
+        "случайное доброе дело",
+    ]
+
+    if any(p in text for p in random_patterns):
+        return {
+            "intent": "random_good_deed",
+            "category": "random_good_deed",
+            "action_type": "mixed",
+            "needs_clarification": False,
+            "intent_confidence": 1.0,
+            "is_invalid": False,
+            "is_relevant": True,
+            "relevance_confidence": 1.0,
+            "keywords": ["volunteering", "community", "animals"]
         }
 
     # =====================================
@@ -70,7 +102,8 @@ def analyze_intent(user_input: str):
             "needs_clarification": True,
             "intent_confidence": 0.0,
             "is_invalid": True,
-            "is_unsupported": False,
+            "is_relevant": False,
+            "relevance_confidence": 0.0,
             "keywords": []
         }
 
@@ -98,6 +131,7 @@ def analyze_intent(user_input: str):
             "environment": "Environment",
             "community": "Community",
             "unclear": "Unclear",
+            "random_good_deed": "random_good_deed",
         }
 
         category = mapping.get(
@@ -118,8 +152,11 @@ def analyze_intent(user_input: str):
             "is_invalid": bool(
                 data.get("is_invalid", False)
             ),
-            "is_unsupported": bool(
-                data.get("is_unsupported", False)
+            "is_relevant": bool(
+                data.get("is_relevant", True)
+            ),
+            "relevance_confidence": float(
+                data.get("relevance_confidence", 0.5)
             ),
             "keywords": data.get("keywords", ["help"])
         }
@@ -135,6 +172,7 @@ def analyze_intent(user_input: str):
             "needs_clarification": True,
             "intent_confidence": 0.0,
             "is_invalid": True,
-            "is_unsupported": False,
+            "is_relevant": False,
+            "relevance_confidence": 0.0,
             "keywords": []
         }
