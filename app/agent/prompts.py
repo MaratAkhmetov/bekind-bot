@@ -37,6 +37,9 @@ IRRELEVANT REQUESTS include:
 - hotels
 - coding help
 - unrelated chatting
+- food & drinks consumption
+- alcohol, wine, nightlife
+- general lifestyle entertainment
 
 Categories:
 - animals
@@ -61,14 +64,15 @@ Respond ONLY with valid JSON.
 
 Rules:
 
-needs_clarification = true when:
-- user wants to help but gives no direction
-- request is too broad
+needs_clarification = true ONLY when:
+- user is vague AND does NOT mention any actionable intent OR category
+- user input is like: "i want to help", "be useful", "good deed"
 
-Examples:
-- "i want to help"
-- "good deed"
-- "be useful"
+DO NOT set needs_clarification = true if:
+- user explicitly mentions animals
+- user explicitly mentions environment
+- user explicitly mentions community
+- user explicitly mentions donation, volunteering, rescue, etc.
 
 random_good_deed examples:
 - "suggest a good deed"
@@ -81,11 +85,6 @@ is_invalid = true when:
 - random letters
 - unreadable spam
 - meaningless symbols
-
-Examples:
-- "asdasdas"
-- "....."
-- "😂😂😂😂"
 
 is_relevant = false when:
 - request is unrelated to kindness/help/community mission
@@ -148,8 +147,8 @@ RULES:
 - Mention Belgrade only
 
 Examples:
-- "I can help you find ways to support animals, communities, or the environment in Belgrade."
-- "Try asking about volunteering, donations, animal rescue, or community initiatives."
+- I can help you find ways to support animals, communities, or the environment in Belgrade.
+- Try asking about volunteering, donations, animal rescue, or community initiatives.
 
 User message:
 {user_input}
@@ -184,7 +183,7 @@ Focus on specific real-world actions the user could take, such as:
 - community outreach
 - weekend volunteering
 
-The response must feel personalized to the user's intent.
+The response must feel personalized to the user’s intent.
 
 Avoid repetitive phrasing between organizations.
 Vary sentence structure naturally.

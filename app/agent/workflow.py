@@ -141,25 +141,22 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     logger.info(f"[WF INTENT] {intent}")
 
-    if should_clarify(intent):
-
-        logger.info("[WF CLARIFICATION REQUIRED]")
-
-        return ask_clarification(
-            intent,
-            user_input
-        )
+    # ======================================================
+    # ❌ FIX 1: HARD GUARD for irrelevant intent
+    # ======================================================
+    if not intent.get("is_relevant", True):
+        return {
+            "type": "answer",
+            "text": (
+                "I can only help with volunteering, animals, environment, "
+                "and community support in Belgrade."
+            ),
+            "items": [],
+            "replay": None,
+        }
 
     category = intent.get("category")
     query = " ".join(intent.get("keywords", []))
-
-    local_data = local_search(
-        category,
-        query,
-        exclude_names
-    )
-
-    logger.info(f"[WF LOCAL] {len(local_data)}")
 
     replay = {
         "kind": "freeform",
@@ -167,8 +164,39 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
         "category": category,
     }
 
+    local_data = []
+
+    # ======================================================
+    # ❌ FIX 2: RANDOM GOOD DEED PIPELINE (3-pass fallback)
+    # ======================================================
+    if category == "random_good_deed":
+
+        logger.info("[WF RANDOM GOOD DEED MODE]")
+
+        local_data += local_search("animals", query, exclude_names)
+        local_data += local_search("environment", query, exclude_names)
+        local_data += local_search("community", query, exclude_names)
+
+        # fallback expansion inside local
+        if len(local_data) < 3:
+            local_data += local_search(category, query, exclude_names)
+
+    else:
+        local_data = local_search(category, query, exclude_names)
+
+    logger.info(f"[WF LOCAL] {len(local_data)}")
+
+    # ======================================================
+    # ❌ FIX 3: clarification ONLY if no usable data
+    # ======================================================
+    if should_clarify(intent) and len(local_data) == 0:
+        return ask_clarification(intent, user_input)
+
     web_data = None
 
+    # ======================================================
+    # FIX 4: fallback logic preserved
+    # ======================================================
     if _should_fallback(local_data) and category != "random_good_deed":
         web_data = _fetch_web(user_input, replay)
 
