@@ -22,6 +22,16 @@ def _build_intro(user_input: str) -> str:
             # safety cleanup
             intro = intro.replace("\n", " ").strip()
 
+            # remove accidental quotes
+            intro = intro.strip('"').strip("'").strip()
+
+            # remove accidental quote+dot endings
+            if intro.endswith('".'):
+                intro = intro[:-2]
+
+            if intro.endswith("'."):
+                intro = intro[:-2]
+
             if not intro.endswith((".", "!", "?")):
                 intro += "."
 
@@ -111,6 +121,25 @@ def _inject_links(text: str, items: list, user_input: str) -> str:
         final.append(block.strip())
 
     result = "\n\n\n".join(final).strip()
+
+    first_line = result.split("\n", 1)[0].strip() if result else ""
+
+    # cleanup accidental quoted intro from LLM
+    if first_line and not first_line.startswith(("1.", "2.", "3.")):
+        cleaned_intro = first_line.strip().strip('"').strip("'").strip()
+
+        if cleaned_intro.endswith('".'):
+            cleaned_intro = cleaned_intro[:-2]
+
+        if cleaned_intro.endswith("'."):
+            cleaned_intro = cleaned_intro[:-2]
+
+        remaining = result.split("\n", 1)
+
+        if len(remaining) > 1:
+            result = cleaned_intro + "\n" + remaining[1]
+        else:
+            result = cleaned_intro
 
     first_line = result.split("\n", 1)[0].strip() if result else ""
 
