@@ -74,9 +74,8 @@ def _dedupe(items):
     return out
 
 
-# FIX 4: stricter fallback
 def _should_fallback(local_data):
-    return len(local_data or []) == 0
+    return len(local_data or []) < 2
 
 
 def _fetch_web(user_input, replay):
@@ -105,24 +104,26 @@ def _answer(user_input, local_data, web_data, replay):
         f"[WF ANSWER] local={len(local_data or {})} web={bool(web_data)}"
     )
 
-    # STRUCTURE PRESERVED FOR Synthesis (IMPORTANT)
-    structured_local = local_data if isinstance(local_data, dict) else {}
+    # =========================
+    # FIX: support structured local_data
+    # =========================
+    if isinstance(local_data, dict):
+        local_items = (
+            local_data.get("animals", [])
+            + local_data.get("environment", [])
+            + local_data.get("community", [])
+        )
+    else:
+        local_items = local_data or []
 
     web_items = _web_results_as_items(web_data)
 
-    # UI layer ONLY dedupe (FIXED)
-    ui_local_items = []
-
-    if isinstance(local_data, dict):
-        for k in ["animals", "environment", "community"]:
-            ui_local_items += local_data.get(k, [])
-    else:
-        ui_local_items = local_data or []
-
-    data = _dedupe(ui_local_items) + web_items
+    # FIX: DO NOT flatten before dedupe incorrectly
+    data = _dedupe(local_items) + web_items
 
     logger.info(f"[WF FINAL ITEMS] {len(data)}")
 
+    # UX fallback
     if not data:
         return {
             "type": "answer",
@@ -133,7 +134,7 @@ def _answer(user_input, local_data, web_data, replay):
 
     text = synthesize_advisory(
         user_input,
-        structured_local,
+        local_items,
         web_items
     )
 
@@ -153,6 +154,7 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     logger.info(f"[WF INTENT] {intent}")
 
+    # FIX: soft invalid guard
     if intent.get("is_invalid") and not intent.get("needs_clarification"):
         return {
             "type": "answer",
@@ -164,7 +166,9 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "replay": None,
         }
 
+    # FIX: normalize category
     category = str(intent.get("category", "")).lower()
+
     query = " ".join(intent.get("keywords", []))
 
     replay = {
@@ -175,6 +179,9 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     local_data = {}
 
+    # =========================
+    # RANDOM GOOD DEED FIXED STRUCTURE
+    # =========================
     if category == "random_good_deed":
 
         logger.info("[WF RANDOM GOOD DEED MODE]")
@@ -185,36 +192,34 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "community": local_search("community", query, exclude_names),
         }
 
+        # ONLY check for web fallback (DO NOT mix into categories)
         total_local = (
             len(local_data["animals"])
             + len(local_data["environment"])
             + len(local_data["community"])
         )
 
-        if total_local == 0:
+        if total_local < 2:
             web_data = _fetch_web(user_input, replay)
         else:
             web_data = None
 
     else:
-
         local_data = local_search(category, query, exclude_names)
 
         web_data = None
 
+        # fallback enrichment allowed for all non-random cases
         if _should_fallback(local_data):
             web_data = _fetch_web(user_input, replay)
 
-    logger.info(
-        f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}"
-    )
+    logger.info(f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}")
 
-    # FIX 3: relaxed clarify guard
+    # clarify ONLY for unclear + no data
     if (
         should_clarify(intent)
-        and not local_data
+        and (not local_data or (isinstance(local_data, list) and len(local_data) == 0))
         and category == "unclear"
-        and not intent.get("keywords")
     ):
         return ask_clarification(intent, user_input)
 
