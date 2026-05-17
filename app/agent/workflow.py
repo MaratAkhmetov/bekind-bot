@@ -111,10 +111,11 @@ def _answer(user_input, local_data, web_data, replay):
 
     logger.info(f"[WF FINAL ITEMS] {len(data)}")
 
+    # FIX 6 — improved UX fallback
     if not data:
         return {
             "type": "answer",
-            "text": "No initiatives found.",
+            "text": "I couldn’t find exact matches, but here are some nearby ways to help.",
             "items": [],
             "replay": replay,
         }
@@ -141,10 +142,8 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     logger.info(f"[WF INTENT] {intent}")
 
-    # ======================================================
-    # ❌ FIX 1: HARD GUARD for irrelevant intent
-    # ======================================================
-    if not intent.get("is_relevant", True):
+    # FIX 2 — soft invalid guard (correct UX behavior)
+    if intent.get("is_invalid") and not intent.get("needs_clarification"):
         return {
             "type": "answer",
             "text": (
@@ -155,7 +154,9 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "replay": None,
         }
 
-    category = intent.get("category")
+    # FIX 4 — normalize category (IMPORTANT)
+    category = str(intent.get("category", "")).lower()
+
     query = " ".join(intent.get("keywords", []))
 
     replay = {
@@ -166,9 +167,7 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     local_data = []
 
-    # ======================================================
-    # ❌ FIX 2: RANDOM GOOD DEED PIPELINE (3-pass fallback)
-    # ======================================================
+    # RANDOM GOOD DEED PIPELINE
     if category == "random_good_deed":
 
         logger.info("[WF RANDOM GOOD DEED MODE]")
@@ -177,27 +176,29 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
         local_data += local_search("environment", query, exclude_names)
         local_data += local_search("community", query, exclude_names)
 
-        # fallback expansion inside local
-        if len(local_data) < 3:
-            local_data += local_search(category, query, exclude_names)
+        # FIX 5 — allow web fallback for random good deed
+        if len(local_data) < 2:
+            web_data = _fetch_web(user_input, replay)
+            web_items = _web_results_as_items(web_data)
+            local_data += web_items
 
     else:
         local_data = local_search(category, query, exclude_names)
 
     logger.info(f"[WF LOCAL] {len(local_data)}")
 
-    # ======================================================
-    # ❌ FIX 3: clarification ONLY if no usable data
-    # ======================================================
-    if should_clarify(intent) and len(local_data) == 0:
+    # FIX 3 — clarify ONLY for truly unclear cases
+    if (
+        should_clarify(intent)
+        and len(local_data) == 0
+        and category == "unclear"
+    ):
         return ask_clarification(intent, user_input)
 
     web_data = None
 
-    # ======================================================
-    # FIX 4: fallback logic preserved
-    # ======================================================
-    if _should_fallback(local_data) and category != "random_good_deed":
+    # FIX 1 — web enrichment always allowed if fallback triggered
+    if _should_fallback(local_data):
         web_data = _fetch_web(user_input, replay)
 
     return _answer(

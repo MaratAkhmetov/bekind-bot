@@ -41,7 +41,8 @@ IRRELEVANT REQUESTS include:
 - alcohol, wine, nightlife
 - general lifestyle entertainment
 
-Categories:
+Categories (IMPORTANT):
+Always return category in lowercase ONLY:
 - animals
 - environment
 - community
