@@ -1,30 +1,74 @@
 import json
 
-from app.agent.prompts import ADVISORY_SYNTHESIS_PROMPT
+from app.agent.prompts import (
+    ADVISORY_SYNTHESIS_PROMPT,
+    INTRO_PROMPT,
+)
+
 from app.services.llm import generate_text
 
 MAX_ITEMS = 3
 
 
 def _build_intro(user_input: str) -> str:
+    try:
+        prompt = INTRO_PROMPT.format(user_input=user_input)
+
+        out = generate_text(prompt)
+
+        if out and str(out).strip():
+            intro = str(out).strip()
+
+            # safety cleanup
+            intro = intro.replace("\n", " ").strip()
+
+            if not intro.endswith((".", "!", "?")):
+                intro += "."
+
+            return intro
+
+    except Exception:
+        pass
+
     text = user_input.lower()
 
     if "animal" in text or "🐾" in text:
-        return "Here are some ways you can help animals in Belgrade:"
-    if "environment" in text or "🌍" in text:
-        return "If you’d like to support the environment in Belgrade, here are a few real initiatives:"
-    if "community" in text or "people" in text or "help people" in text:
-        return "Here are meaningful ways to help people in your community:"
+        return "Here are some ways you can help animals in Belgrade."
 
-    return "Here are real ways you can make a positive impact:"
+    if "environment" in text or "🌍" in text:
+        return "If you'd like to support the environment, here are a few real initiatives."
+
+    if "community" in text or "people" in text:
+        return "Here are meaningful ways to help people in your community."
+
+    return "Here are real ways you can make a positive impact."
+
+
+def _format_links(item: dict) -> str:
+    website = item.get("website")
+    instagram = item.get("instagram")
+    facebook = item.get("facebook")
+
+    links = []
+
+    if website:
+        links.append(f"🌐 {website}")
+
+    if instagram:
+        links.append(f"📸 {instagram}")
+    elif facebook:
+        links.append(f"📘 {facebook}")
+
+    return "\n".join(links)
 
 
 def _inject_links(text: str, items: list, user_input: str) -> str:
     """
-    STRICT POSITIONAL LINK INJECTION (stable version + intro protection)
+    STRICT POSITIONAL LINK INJECTION
     """
 
     FOOTER = "💚 Small actions create real impact."
+
     text = text.replace(FOOTER, "").strip()
 
     lines = text.split("\n")
@@ -37,12 +81,14 @@ def _inject_links(text: str, items: list, user_input: str) -> str:
             if current:
                 result_blocks.append("\n".join(current).strip())
                 current = []
+
         current.append(line)
 
     if current:
         result_blocks.append("\n".join(current).strip())
 
     org_blocks = []
+
     for b in result_blocks:
         if any(b.strip().startswith(f"{i}.") for i in range(1, 10)):
             org_blocks.append(b)
@@ -57,28 +103,15 @@ def _inject_links(text: str, items: list, user_input: str) -> str:
     for i, item in enumerate(items[:MAX_ITEMS]):
         block = org_blocks[i] if i < len(org_blocks) else ""
 
-        website = item.get("website")
-        instagram = item.get("instagram")
-        facebook = item.get("facebook")
-
-        links = []
-
-        if website:
-            links.append(website)
-
-        if instagram:
-            links.append(instagram)
-        elif facebook:
-            links.append(facebook)
+        links = _format_links(item)
 
         if links:
-            block += "\n\n" + "\n".join(links)
+            block += "\n\n" + links
 
         final.append(block.strip())
 
     result = "\n\n\n".join(final).strip()
 
-    # 🔥 CRITICAL FIX: ensure intro ALWAYS exists
     first_line = result.split("\n", 1)[0].strip() if result else ""
 
     if first_line.startswith(("1.", "2.", "3.")):
@@ -99,14 +132,23 @@ def synthesize_answer(user_input, local_data, web_data):
     while len(items) < MAX_ITEMS:
         items.append({})
 
-    text = _build_intro(user_input) + "\n\n"
+    intro = _build_intro(user_input)
+
+    text = intro + "\n\n"
 
     for i, item in enumerate(items, start=1):
         name = item.get("name", "Unknown")
         description = item.get("description", "")
 
         text += f"{i}. {name}\n"
-        text += f"{description}\n\n"
+        text += f"{description}"
+
+        links = _format_links(item)
+
+        if links:
+            text += "\n\n" + links
+
+        text += "\n\n"
 
     text += "💚 Small actions create real impact."
 

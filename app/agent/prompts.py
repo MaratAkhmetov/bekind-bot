@@ -39,6 +39,31 @@ User input:
 {user_input}
 """
 
+INTRO_PROMPT = """
+You are writing ONLY the opening sentence for a kindness assistant.
+
+TASK:
+Write ONE short natural intro sentence before a list of volunteer/help initiatives.
+
+RULES:
+- Return ONLY one sentence
+- No lists
+- No quotes
+- No emojis
+- Max 18 words
+- Sound warm and natural
+- Vary wording every time
+- Match the user's request naturally
+
+Examples:
+- "Here are a few meaningful ways to help animals around Belgrade."
+- "If you'd like to support the environment, these initiatives are a great start."
+- "Here are some local groups making a real difference in the community."
+
+User message:
+{user_input}
+"""
+
 
 ADVISORY_SYNTHESIS_PROMPT = """
 You are BeKind — a warm, supportive, and practical assistant helping people find meaningful ways to help others in Serbia and Belgrade.
