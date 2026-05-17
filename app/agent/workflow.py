@@ -101,17 +101,29 @@ def _fetch_web(user_input, replay):
 def _answer(user_input, local_data, web_data, replay):
 
     logger.info(
-        f"[WF ANSWER] local={len(local_data or [])} web={bool(web_data)}"
+        f"[WF ANSWER] local={len(local_data or {})} web={bool(web_data)}"
     )
 
-    local_items = local_data or []
+    # =========================
+    # FIX: support structured local_data
+    # =========================
+    if isinstance(local_data, dict):
+        local_items = (
+            local_data.get("animals", [])
+            + local_data.get("environment", [])
+            + local_data.get("community", [])
+        )
+    else:
+        local_items = local_data or []
+
     web_items = _web_results_as_items(web_data)
 
-    data = _dedupe(local_items + web_items)
+    # FIX: DO NOT flatten before dedupe incorrectly
+    data = _dedupe(local_items) + web_items
 
     logger.info(f"[WF FINAL ITEMS] {len(data)}")
 
-    # FIX 6 — improved UX fallback
+    # UX fallback
     if not data:
         return {
             "type": "answer",
@@ -142,7 +154,7 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     logger.info(f"[WF INTENT] {intent}")
 
-    # FIX 2 — soft invalid guard (correct UX behavior)
+    # FIX: soft invalid guard
     if intent.get("is_invalid") and not intent.get("needs_clarification"):
         return {
             "type": "answer",
@@ -154,7 +166,7 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "replay": None,
         }
 
-    # FIX 4 — normalize category (IMPORTANT)
+    # FIX: normalize category
     category = str(intent.get("category", "")).lower()
 
     query = " ".join(intent.get("keywords", []))
@@ -165,41 +177,51 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
         "category": category,
     }
 
-    local_data = []
+    local_data = {}
 
-    # RANDOM GOOD DEED PIPELINE
+    # =========================
+    # RANDOM GOOD DEED FIXED STRUCTURE
+    # =========================
     if category == "random_good_deed":
 
         logger.info("[WF RANDOM GOOD DEED MODE]")
 
-        local_data += local_search("animals", query, exclude_names)
-        local_data += local_search("environment", query, exclude_names)
-        local_data += local_search("community", query, exclude_names)
+        local_data = {
+            "animals": local_search("animals", query, exclude_names),
+            "environment": local_search("environment", query, exclude_names),
+            "community": local_search("community", query, exclude_names),
+        }
 
-        # FIX 5 — allow web fallback for random good deed
-        if len(local_data) < 2:
+        # ONLY check for web fallback (DO NOT mix into categories)
+        total_local = (
+            len(local_data["animals"])
+            + len(local_data["environment"])
+            + len(local_data["community"])
+        )
+
+        if total_local < 2:
             web_data = _fetch_web(user_input, replay)
-            web_items = _web_results_as_items(web_data)
-            local_data += web_items
+        else:
+            web_data = None
 
     else:
         local_data = local_search(category, query, exclude_names)
 
-    logger.info(f"[WF LOCAL] {len(local_data)}")
+        web_data = None
 
-    # FIX 3 — clarify ONLY for truly unclear cases
+        # fallback enrichment allowed for all non-random cases
+        if _should_fallback(local_data):
+            web_data = _fetch_web(user_input, replay)
+
+    logger.info(f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}")
+
+    # clarify ONLY for unclear + no data
     if (
         should_clarify(intent)
-        and len(local_data) == 0
+        and (not local_data or (isinstance(local_data, list) and len(local_data) == 0))
         and category == "unclear"
     ):
         return ask_clarification(intent, user_input)
-
-    web_data = None
-
-    # FIX 1 — web enrichment always allowed if fallback triggered
-    if _should_fallback(local_data):
-        web_data = _fetch_web(user_input, replay)
 
     return _answer(
         user_input,
