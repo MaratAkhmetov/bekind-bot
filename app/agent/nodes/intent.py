@@ -21,7 +21,7 @@ def analyze_intent(user_input: str):
     if "🐾" in text or "help animals" in text:
         return {
             "intent": "animals",
-            "category": "Animals",
+            "category": "animals",
             "action_type": "mixed",
             "needs_clarification": False,
             "intent_confidence": 1.0,
@@ -34,7 +34,7 @@ def analyze_intent(user_input: str):
     if "🌍" in text or "help environment" in text:
         return {
             "intent": "environment",
-            "category": "Environment",
+            "category": "environment",
             "action_type": "mixed",
             "needs_clarification": False,
             "intent_confidence": 1.0,
@@ -51,7 +51,7 @@ def analyze_intent(user_input: str):
     ):
         return {
             "intent": "community",
-            "category": "Community",
+            "category": "community",
             "action_type": "mixed",
             "needs_clarification": False,
             "intent_confidence": 1.0,
@@ -62,7 +62,7 @@ def analyze_intent(user_input: str):
         }
 
     # =====================================
-    # RANDOM GOOD DEED
+    # RANDOM GOOD DEED (FIXED + EXPANDED)
     # =====================================
 
     random_patterns = [
@@ -90,6 +90,28 @@ def analyze_intent(user_input: str):
             "keywords": ["volunteering", "community", "animals"]
         }
 
+    # 🔥 FIX: better animal intent capture inside LLM-free layer
+    if (
+        "animal" in text
+        or "cats" in text
+        or "dogs" in text
+        or "stray" in text
+        or "for animals" in text
+        or "about animals" in text
+        or "help animals" in text
+    ):
+        return {
+            "intent": "animals",
+            "category": "animals",
+            "action_type": "mixed",
+            "needs_clarification": False,
+            "intent_confidence": 0.95,
+            "is_invalid": False,
+            "is_relevant": True,
+            "relevance_confidence": 0.95,
+            "keywords": ["animals", "rescue", "cats", "dogs"]
+        }
+
     # =====================================
     # QUICK INVALID DETECTION
     # =====================================
@@ -97,7 +119,7 @@ def analyze_intent(user_input: str):
     if len(text) <= 2:
         return {
             "intent": "invalid",
-            "category": "Unclear",
+            "category": "unclear",
             "action_type": "info",
             "needs_clarification": True,
             "intent_confidence": 0.0,
@@ -127,16 +149,16 @@ def analyze_intent(user_input: str):
         data = json.loads(json_str)
 
         mapping = {
-            "animals": "Animals",
-            "environment": "Environment",
-            "community": "Community",
-            "unclear": "Unclear",
+            "animals": "animals",
+            "environment": "environment",
+            "community": "community",
+            "unclear": "unclear",
             "random_good_deed": "random_good_deed",
         }
 
         category = mapping.get(
             str(data.get("category", "")).lower(),
-            "Unclear"
+            "unclear"
         )
 
         return {
@@ -167,7 +189,7 @@ def analyze_intent(user_input: str):
 
         return {
             "intent": "fallback",
-            "category": "Unclear",
+            "category": "unclear",
             "action_type": "info",
             "needs_clarification": True,
             "intent_confidence": 0.0,
