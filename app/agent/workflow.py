@@ -18,6 +18,33 @@ BELGRADE_HINTS = [
 ]
 
 
+ACTIONABLE_HINTS = [
+    "donate",
+    "donation",
+    "volunteer",
+    "volunteering",
+    "help",
+    "support",
+    "shelter",
+    "shelters",
+    "community",
+    "homeless",
+    "cats",
+    "cat",
+    "dogs",
+    "dog",
+    "animals",
+    "animal",
+    "environment",
+    "people",
+    "food bank",
+    "charity",
+    "ngo",
+    "rescue",
+    "foster",
+]
+
+
 def _web_results_as_items(web_data, exclude_urls=None, max_raw=15):
 
     if not web_data or not isinstance(web_data, dict):
@@ -102,26 +129,7 @@ def _looks_actionable(text: str):
 
     t = (text or "").lower()
 
-    actionable_words = [
-        "donate",
-        "volunteer",
-        "help",
-        "support",
-        "shelter",
-        "community",
-        "homeless",
-        "cats",
-        "dogs",
-        "animals",
-        "environment",
-        "people",
-        "food bank",
-        "charity",
-        "ngo",
-        "rescue",
-    ]
-
-    return any(w in t for w in actionable_words)
+    return any(w in t for w in ACTIONABLE_HINTS)
 
 
 def _answer(
@@ -189,7 +197,6 @@ def run_workflow(
 
     logger.info(f"[WF INTENT] {intent}")
 
-    # ✅ FIX 3 + FIX 4: INVALID FIRST GATE (упрощённый и строгий)
     if intent.get("is_invalid"):
         return ask_clarification(intent, user_input)
 
@@ -255,17 +262,24 @@ def run_workflow(
 
         has_results = len(local_data) > 0
 
-    # ✅ FIX 2: новый строгий skip rule (NO _looks_actionable)
+    actionable = _looks_actionable(user_input)
+
     should_skip_clarify = (
-        has_results
-        and intent.get("is_relevant", True)
-        and intent.get("intent_confidence", 0) > 0.6
+        intent.get("is_relevant", True)
+        and (
+            has_results
+            or actionable
+            or intent.get("intent_confidence", 0) >= 0.55
+        )
     )
 
     force_answer = (
         intent.get("is_relevant", False)
         and not intent.get("is_invalid", False)
-        and category != "unclear"
+        and (
+            category != "unclear"
+            or actionable
+        )
     )
 
     if (

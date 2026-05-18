@@ -18,6 +18,25 @@ If user request is absurd, violent, or nonsensical, you MUST set:
 - is_invalid = true
 even if keywords appear (animals/community/etc.)
 
+VERY IMPORTANT:
+If the user clearly expresses desire to help, donate, volunteer, rescue, support,
+foster, or contribute — this is ALWAYS relevant.
+
+Even if category is not perfectly clear,
+you MUST still set:
+- is_relevant = true
+- needs_clarification = false
+
+Examples:
+- "i want to donate for stray cats"
+- "help animals"
+- "where can i volunteer"
+- "how can i help shelters"
+- "give me opportunities for help for animals"
+- "i want to support homeless people"
+
+These MUST NOT trigger clarification.
+
 RELEVANT REQUESTS include:
 - helping animals
 - volunteering
@@ -73,13 +92,27 @@ Rules:
 
 needs_clarification = true ONLY when:
 - user is vague AND does NOT mention any actionable intent OR category
-- user input is like: "i want to help", "be useful", "good deed"
+- user input is like:
+  - "i want to help"
+  - "be useful"
+  - "good deed"
 
-DO NOT set needs_clarification = true if:
-- user explicitly mentions animals
-- user explicitly mentions environment
-- user explicitly mentions community
-- user explicitly mentions donation, volunteering, rescue, etc.
+DO NOT set needs_clarification = true if user mentions:
+- animals
+- cats
+- dogs
+- shelters
+- rescue
+- donate
+- donation
+- volunteer
+- volunteering
+- support
+- foster
+- food aid
+- homeless
+- environment
+- community
 
 random_good_deed examples:
 - "suggest a good deed"
