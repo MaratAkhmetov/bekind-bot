@@ -12,15 +12,7 @@ from app.agent.memory import build_context_text
 MAX_ITEMS = 3
 
 
-# ----------------------------
-# helpers: noise detection
-# ----------------------------
-
 def _is_noise_input(text: str) -> bool:
-    """
-    Better than keyword filtering:
-    detects garbage / meaningless input structurally.
-    """
     if not text:
         return True
 
@@ -39,10 +31,6 @@ def _is_noise_input(text: str) -> bool:
     return False
 
 
-# ----------------------------
-# intro
-# ----------------------------
-
 def _build_intro(user_input: str) -> str:
     try:
         prompt = INTRO_PROMPT.format(user_input=user_input)
@@ -55,7 +43,7 @@ def _build_intro(user_input: str) -> str:
             intro = intro.strip('"').strip("'").strip()
 
             intro = re.sub(r"\s+", " ", intro).strip()
-            intro = re.sub(r"[\"'`*_#]", "", intro)
+            intro = re.sub(r"[\"'*_#]", "", intro)
 
             if not intro.endswith((".", "!", "?")):
                 intro += "."
@@ -67,10 +55,6 @@ def _build_intro(user_input: str) -> str:
 
     return "Here are real ways you can make a positive impact."
 
-
-# ----------------------------
-# links (dedupe fixed)
-# ----------------------------
 
 def _format_links(item: dict, seen_urls: set) -> str:
     website = (item.get("website") or "").strip()
@@ -98,16 +82,11 @@ def _format_links(item: dict, seen_urls: set) -> str:
     return "\n".join(links)
 
 
-# ----------------------------
-# inject links (safe version)
-# ----------------------------
-
 def _inject_links(text: str, items: list, user_input: str) -> str:
     FOOTER = "💚 Small actions create real impact."
 
     text = (text or "").replace(FOOTER, "").strip()
 
-    # 🔧 FIX: strip existing link lines from LLM output
     def _strip_links(block: str) -> str:
         lines = block.split("\n")
         return "\n".join(
@@ -143,8 +122,6 @@ def _inject_links(text: str, items: list, user_input: str) -> str:
 
     for i, item in enumerate(items[:MAX_ITEMS]):
         block = org_blocks[i] if i < len(org_blocks) else ""
-
-        # 🔧 FIX: remove existing links before injecting clean ones
         block = _strip_links(block)
 
         links = _format_links(item, seen_urls)
@@ -158,10 +135,6 @@ def _inject_links(text: str, items: list, user_input: str) -> str:
 
     return result + "\n\n" + FOOTER
 
-
-# ----------------------------
-# fallback answer
-# ----------------------------
 
 def synthesize_answer(user_input, local_data, web_data):
     data = local_data if local_data else web_data if web_data else []
@@ -201,18 +174,16 @@ def _items_payload(items):
     rows = []
 
     for it in items[:MAX_ITEMS]:
-        rows.append(
-            {
-                "name": it.get("name") or "Unknown",
-                "description": (it.get("description") or "").strip(),
-                "tags": (it.get("tags") or "").strip(),
-                "help_types": (it.get("help_types") or "").strip(),
-                "practical_help": (it.get("practical_help") or "").strip(),
-                "website": (it.get("website") or "").strip(),
-                "instagram": (it.get("instagram") or "").strip(),
-                "facebook": (it.get("facebook") or "").strip(),
-            }
-        )
+        rows.append({
+            "name": it.get("name") or "Unknown",
+            "description": (it.get("description") or "").strip(),
+            "tags": (it.get("tags") or "").strip(),
+            "help_types": (it.get("help_types") or "").strip(),
+            "practical_help": (it.get("practical_help") or "").strip(),
+            "website": (it.get("website") or "").strip(),
+            "instagram": (it.get("instagram") or "").strip(),
+            "facebook": (it.get("facebook") or "").strip(),
+        })
 
     return json.dumps(rows, ensure_ascii=False, indent=2)
 
@@ -223,6 +194,11 @@ def synthesize_advisory(
     web_data,
     user_id=None,
 ):
+
+    # 🔴 FIX 4 — SAFETY FALLBACK
+    if _is_noise_input(user_input):
+        return "I can help with volunteering and community support in Belgrade."
+
     data = local_data if local_data else web_data if web_data else []
 
     if not data:

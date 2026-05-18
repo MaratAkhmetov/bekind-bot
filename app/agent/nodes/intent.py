@@ -62,8 +62,10 @@ def analyze_intent(user_input: str):
         }
 
     # =====================================
-    # DIRECT ANIMAL DETECTION
+    # DIRECT ANIMAL DETECTION (STRICT MODE)
     # =====================================
+
+    STRICT_MODE = True
 
     animal_words = [
         "animal",
@@ -77,27 +79,27 @@ def analyze_intent(user_input: str):
         "rescue",
     ]
 
-    if any(w in text for w in animal_words):
-
-        return {
-            "intent": "animals",
-            "category": "Animals",
-            "action_type": "mixed",
-            "needs_clarification": False,
-            "intent_confidence": 0.95,
-            "is_invalid": False,
-            "is_relevant": True,
-            "relevance_confidence": 0.95,
-            "keywords": [
-                "cats",
-                "dogs",
-                "animals",
-                "rescue"
-            ]
-        }
+    if not STRICT_MODE:
+        if any(w in text for w in animal_words):
+            return {
+                "intent": "animals",
+                "category": "Animals",
+                "action_type": "mixed",
+                "needs_clarification": False,
+                "intent_confidence": 0.95,
+                "is_invalid": False,
+                "is_relevant": True,
+                "relevance_confidence": 0.95,
+                "keywords": [
+                    "cats",
+                    "dogs",
+                    "animals",
+                    "rescue"
+                ]
+            }
 
     # =====================================
-    # DIRECT COMMUNITY DETECTION
+    # DIRECT COMMUNITY DETECTION (STRICT MODE)
     # =====================================
 
     community_words = [
@@ -110,24 +112,24 @@ def analyze_intent(user_input: str):
         "donate money",
     ]
 
-    if any(w in text for w in community_words):
-
-        return {
-            "intent": "community",
-            "category": "Community",
-            "action_type": "mixed",
-            "needs_clarification": False,
-            "intent_confidence": 0.95,
-            "is_invalid": False,
-            "is_relevant": True,
-            "relevance_confidence": 0.95,
-            "keywords": [
-                "community",
-                "homeless",
-                "charity",
-                "donation"
-            ]
-        }
+    if not STRICT_MODE:
+        if any(w in text for w in community_words):
+            return {
+                "intent": "community",
+                "category": "Community",
+                "action_type": "mixed",
+                "needs_clarification": False,
+                "intent_confidence": 0.95,
+                "is_invalid": False,
+                "is_relevant": True,
+                "relevance_confidence": 0.95,
+                "keywords": [
+                    "community",
+                    "homeless",
+                    "charity",
+                    "donation"
+                ]
+            }
 
     # =====================================
     # RANDOM GOOD DEED
@@ -211,21 +213,11 @@ def analyze_intent(user_input: str):
             "intent": data.get("intent", "unknown"),
             "category": category,
             "action_type": data.get("action_type", "info"),
-            "needs_clarification": bool(
-                data.get("needs_clarification", False)
-            ),
-            "intent_confidence": float(
-                data.get("intent_confidence", 0.0)
-            ),
-            "is_invalid": bool(
-                data.get("is_invalid", False)
-            ),
-            "is_relevant": bool(
-                data.get("is_relevant", True)
-            ),
-            "relevance_confidence": float(
-                data.get("relevance_confidence", 0.5)
-            ),
+            "needs_clarification": bool(data.get("needs_clarification", False)),
+            "intent_confidence": float(data.get("intent_confidence", 0.0)),
+            "is_invalid": bool(data.get("is_invalid", False)),
+            "is_relevant": bool(data.get("is_relevant", True)),
+            "relevance_confidence": float(data.get("relevance_confidence", 0.5)),
             "keywords": data.get("keywords", ["help"])
         }
 

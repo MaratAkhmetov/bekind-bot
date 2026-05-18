@@ -189,16 +189,9 @@ def run_workflow(
 
     logger.info(f"[WF INTENT] {intent}")
 
-    if intent.get("is_invalid") and not intent.get("needs_clarification"):
-        return {
-            "type": "answer",
-            "text": (
-                "I can only help with volunteering, animals, environment, "
-                "and community support in Belgrade."
-            ),
-            "items": [],
-            "replay": None,
-        }
+    # ✅ FIX 3 + FIX 4: INVALID FIRST GATE (упрощённый и строгий)
+    if intent.get("is_invalid"):
+        return ask_clarification(intent, user_input)
 
     category = str(intent.get("category", "")).lower()
 
@@ -246,10 +239,6 @@ def run_workflow(
         f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}"
     )
 
-    # =====================================
-    # FIXED CLARIFY LOGIC
-    # =====================================
-
     has_results = False
 
     if isinstance(local_data, dict):
@@ -266,10 +255,11 @@ def run_workflow(
 
         has_results = len(local_data) > 0
 
+    # ✅ FIX 2: новый строгий skip rule (NO _looks_actionable)
     should_skip_clarify = (
         has_results
-        or _looks_actionable(user_input)
-        or len(intent.get("keywords", [])) > 0
+        and intent.get("is_relevant", True)
+        and intent.get("intent_confidence", 0) > 0.6
     )
 
     if (
