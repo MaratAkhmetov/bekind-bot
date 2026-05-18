@@ -210,6 +210,16 @@ The intro is generated separately.
 User message:
 {user_input}
 
+Previous conversation:
+{memory_context}
+
+IMPORTANT:
+Use previous conversation ONLY for conversational continuity.
+
+NEVER override the current user request category.
+
+The CURRENT user request is always the highest priority.
+
 You have exactly {n} organizations available.
 
 For each organization:
