@@ -262,10 +262,17 @@ def run_workflow(
         and intent.get("intent_confidence", 0) > 0.6
     )
 
+    force_answer = (
+        intent.get("is_relevant", False)
+        and not intent.get("is_invalid", False)
+        and category != "unclear"
+    )
+
     if (
         should_clarify(intent)
         and category == "unclear"
         and not should_skip_clarify
+        and not force_answer
     ):
         return ask_clarification(intent, user_input)
 

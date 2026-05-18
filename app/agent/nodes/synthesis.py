@@ -234,7 +234,11 @@ def synthesize_advisory(
         if "I'm having trouble processing this right now" in out_s:
             raise ValueError("llm soft fail")
 
-        return _inject_links(out_s, items, user_input)
+        intro = _build_intro(user_input)
+
+        final_text = _inject_links(out_s, items, user_input)
+
+        return intro + "\n\n" + final_text
 
     except Exception:
         return synthesize_answer(user_input, local_data, web_data)
