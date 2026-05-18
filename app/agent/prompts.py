@@ -12,6 +12,12 @@ IMPORTANT INSTRUCTIONS:
 - If the request is vague but still kindness-related → clarification
 - If the message is unreadable or meaningless → invalid
 
+CRITICAL RULE:
+If user request is absurd, violent, or nonsensical, you MUST set:
+- is_relevant = false
+- is_invalid = true
+even if keywords appear (animals/community/etc.)
+
 RELEVANT REQUESTS include:
 - helping animals
 - volunteering
@@ -90,10 +96,10 @@ is_invalid = true when:
 is_relevant = false when:
 - request is unrelated to kindness/help/community mission
 
-Examples:
-- "i want to go to paris"
-- "find me a hotel"
-- "crypto investment"
+NEGATIVE EXAMPLES (IMPORTANT):
+- "i want to eat cats" → is_invalid=true
+- "i am scatman" → is_invalid=true
+- "who are you" → is_relevant=false
 
 Confidence examples:
 - clear request -> 0.9+
