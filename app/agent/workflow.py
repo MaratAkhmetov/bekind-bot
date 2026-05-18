@@ -1,7 +1,6 @@
 from app.agent.nodes.intent import analyze_intent
 from app.agent.nodes.clarify import (
     ask_clarification,
-    should_clarify,
 )
 
 from app.agent.nodes.local_search import local_search
@@ -15,33 +14,6 @@ BELGRADE_HINTS = [
     "belgrade",
     "beograd",
     "rs",
-]
-
-
-ACTIONABLE_HINTS = [
-    "donate",
-    "donation",
-    "volunteer",
-    "volunteering",
-    "help",
-    "support",
-    "shelter",
-    "shelters",
-    "community",
-    "homeless",
-    "cats",
-    "cat",
-    "dogs",
-    "dog",
-    "animals",
-    "animal",
-    "environment",
-    "people",
-    "food bank",
-    "charity",
-    "ngo",
-    "rescue",
-    "foster",
 ]
 
 
@@ -125,13 +97,6 @@ def _fetch_web(user_input, replay):
     return web_search(q)
 
 
-def _looks_actionable(text: str):
-
-    t = (text or "").lower()
-
-    return any(w in t for w in ACTIONABLE_HINTS)
-
-
 def _answer(
     user_input,
     local_data,
@@ -157,7 +122,7 @@ def _answer(
 
     web_items = _web_results_as_items(web_data)
 
-    data = _dedupe(local_items) + web_items
+    data = _dedupe(local_items + web_items)
 
     logger.info(f"[WF FINAL ITEMS] {len(data)}")
 
@@ -197,7 +162,16 @@ def run_workflow(
 
     logger.info(f"[WF INTENT] {intent}")
 
+    # INVALID
     if intent.get("is_invalid"):
+        return ask_clarification(intent, user_input)
+
+    # IRRELEVANT
+    if not intent.get("is_relevant", False):
+        return ask_clarification(intent, user_input)
+
+    # CLARIFICATION
+    if intent.get("needs_clarification", False):
         return ask_clarification(intent, user_input)
 
     category = str(intent.get("category", "")).lower()
@@ -237,58 +211,14 @@ def run_workflow(
 
         local_data = local_search(category, query, exclude_names)
 
-        web_data = None
-
         if _should_fallback(local_data):
             web_data = _fetch_web(user_input, replay)
+        else:
+            web_data = None
 
     logger.info(
         f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}"
     )
-
-    has_results = False
-
-    if isinstance(local_data, dict):
-
-        total = (
-            len(local_data.get("animals", []))
-            + len(local_data.get("environment", []))
-            + len(local_data.get("community", []))
-        )
-
-        has_results = total > 0
-
-    elif isinstance(local_data, list):
-
-        has_results = len(local_data) > 0
-
-    actionable = _looks_actionable(user_input)
-
-    should_skip_clarify = (
-        intent.get("is_relevant", True)
-        and (
-            has_results
-            or actionable
-            or intent.get("intent_confidence", 0) >= 0.55
-        )
-    )
-
-    force_answer = (
-        intent.get("is_relevant", False)
-        and not intent.get("is_invalid", False)
-        and (
-            category != "unclear"
-            or actionable
-        )
-    )
-
-    if (
-        should_clarify(intent)
-        and category == "unclear"
-        and not should_skip_clarify
-        and not force_answer
-    ):
-        return ask_clarification(intent, user_input)
 
     return _answer(
         user_input,
