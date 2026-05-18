@@ -62,7 +62,7 @@ def analyze_intent(user_input: str):
         }
 
     # =====================================
-    # DIRECT ANIMAL DETECTION (STRICT MODE)
+    # DIRECT DETECTION (SAFE MODE KEPT)
     # =====================================
 
     STRICT_MODE = True
@@ -79,29 +79,6 @@ def analyze_intent(user_input: str):
         "rescue",
     ]
 
-    if not STRICT_MODE:
-        if any(w in text for w in animal_words):
-            return {
-                "intent": "animals",
-                "category": "Animals",
-                "action_type": "mixed",
-                "needs_clarification": False,
-                "intent_confidence": 0.95,
-                "is_invalid": False,
-                "is_relevant": True,
-                "relevance_confidence": 0.95,
-                "keywords": [
-                    "cats",
-                    "dogs",
-                    "animals",
-                    "rescue"
-                ]
-            }
-
-    # =====================================
-    # DIRECT COMMUNITY DETECTION (STRICT MODE)
-    # =====================================
-
     community_words = [
         "homeless",
         "elderly",
@@ -111,29 +88,6 @@ def analyze_intent(user_input: str):
         "refugees",
         "donate money",
     ]
-
-    if not STRICT_MODE:
-        if any(w in text for w in community_words):
-            return {
-                "intent": "community",
-                "category": "Community",
-                "action_type": "mixed",
-                "needs_clarification": False,
-                "intent_confidence": 0.95,
-                "is_invalid": False,
-                "is_relevant": True,
-                "relevance_confidence": 0.95,
-                "keywords": [
-                    "community",
-                    "homeless",
-                    "charity",
-                    "donation"
-                ]
-            }
-
-    # =====================================
-    # RANDOM GOOD DEED
-    # =====================================
 
     random_patterns = [
         "suggest a good deed",
@@ -146,6 +100,10 @@ def analyze_intent(user_input: str):
         "предложи случайные",
         "случайное доброе дело",
     ]
+
+    # =====================================
+    # RANDOM GOOD DEED
+    # =====================================
 
     if any(p in text for p in random_patterns):
         return {
@@ -169,7 +127,7 @@ def analyze_intent(user_input: str):
             "intent": "invalid",
             "category": "Unclear",
             "action_type": "info",
-            "needs_clarification": True,
+            "needs_clarification": False,
             "intent_confidence": 0.0,
             "is_invalid": True,
             "is_relevant": False,
@@ -229,10 +187,10 @@ def analyze_intent(user_input: str):
             "intent": "fallback",
             "category": "Unclear",
             "action_type": "info",
-            "needs_clarification": True,
+            "needs_clarification": False,
             "intent_confidence": 0.0,
-            "is_invalid": True,
-            "is_relevant": False,
+            "is_invalid": False,
+            "is_relevant": True,
             "relevance_confidence": 0.0,
             "keywords": []
         }
