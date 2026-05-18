@@ -140,7 +140,7 @@ def synthesize_answer(user_input, local_data, web_data):
     data = local_data if local_data else web_data if web_data else []
 
     if not data:
-        return "No initiatives found."
+        return synthesize_answer(user_input, [], [])
 
     items = data[:MAX_ITEMS]
 
@@ -202,7 +202,7 @@ def synthesize_advisory(
     data = local_data if local_data else web_data if web_data else []
 
     if not data:
-        return "No initiatives found."
+        return synthesize_answer(user_input, [], [])
 
     items = list(data[:MAX_ITEMS])
 

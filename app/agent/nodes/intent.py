@@ -90,12 +90,7 @@ def analyze_intent(user_input: str):
                 "is_invalid": False,
                 "is_relevant": True,
                 "relevance_confidence": 0.95,
-                "keywords": [
-                    "cats",
-                    "dogs",
-                    "animals",
-                    "rescue"
-                ]
+                "keywords": ["cats", "dogs", "animals", "rescue"]
             }
 
     # =====================================
@@ -123,12 +118,7 @@ def analyze_intent(user_input: str):
                 "is_invalid": False,
                 "is_relevant": True,
                 "relevance_confidence": 0.95,
-                "keywords": [
-                    "community",
-                    "homeless",
-                    "charity",
-                    "donation"
-                ]
+                "keywords": ["community", "homeless", "charity", "donation"]
             }
 
     # =====================================
@@ -178,6 +168,34 @@ def analyze_intent(user_input: str):
         }
 
     # =====================================
+    # 🔧 HELP OVERRIDE (NEW FIX)
+    # =====================================
+
+    HELP_OVERRIDE_WORDS = [
+        "help",
+        "donate",
+        "donation",
+        "feed",
+        "volunteer",
+        "foster",
+        "rescue",
+        "support",
+    ]
+
+    if any(w in text for w in HELP_OVERRIDE_WORDS):
+        return {
+            "intent": "explicit_help",
+            "category": "animals" if ("cat" in text or "dog" in text) else "community",
+            "action_type": "mixed",
+            "needs_clarification": False,
+            "intent_confidence": 0.95,
+            "is_invalid": False,
+            "is_relevant": True,
+            "relevance_confidence": 0.95,
+            "keywords": ["help", "donate", "volunteer"]
+        }
+
+    # =====================================
     # LLM
     # =====================================
 
@@ -209,12 +227,30 @@ def analyze_intent(user_input: str):
             "Unclear"
         )
 
+        confidence = float(data.get("intent_confidence", 0.0))
+
+        # =====================================
+        # 🔧 FIXED CONFIDENCE LOGIC
+        # =====================================
+        if confidence < 0.35 and not data.get("is_relevant", True):
+            return {
+                "intent": "clarification",
+                "category": "Unclear",
+                "action_type": "info",
+                "needs_clarification": True,
+                "intent_confidence": confidence,
+                "is_invalid": False,
+                "is_relevant": False,
+                "relevance_confidence": 0.0,
+                "keywords": data.get("keywords", [])
+            }
+
         return {
             "intent": data.get("intent", "unknown"),
             "category": category,
             "action_type": data.get("action_type", "info"),
             "needs_clarification": bool(data.get("needs_clarification", False)),
-            "intent_confidence": float(data.get("intent_confidence", 0.0)),
+            "intent_confidence": confidence,
             "is_invalid": bool(data.get("is_invalid", False)),
             "is_relevant": bool(data.get("is_relevant", True)),
             "relevance_confidence": float(data.get("relevance_confidence", 0.5)),

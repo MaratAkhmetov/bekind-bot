@@ -162,15 +162,19 @@ def run_workflow(
 
     logger.info(f"[WF INTENT] {intent}")
 
-    # INVALID
+    # 1. HARD INVALID
     if intent.get("is_invalid"):
         return ask_clarification(intent, user_input)
 
-    # IRRELEVANT
-    if not intent.get("is_relevant", False):
+    # 2. STRONG POSITIVE OVERRIDE (NEW)
+    if intent.get("intent") == "explicit_help":
+        pass  # ALWAYS continue to synthesis
+
+    # 3. IRRELEVANT
+    if intent.get("is_relevant") is False:
         return ask_clarification(intent, user_input)
 
-    # CLARIFICATION
+    # 4. ONLY THEN CLARIFICATION
     if intent.get("needs_clarification", False):
         return ask_clarification(intent, user_input)
 
