@@ -26,16 +26,13 @@ def _is_noise_input(text: str) -> bool:
 
     t = text.strip().lower()
 
-    # too short
     if len(t) < 3:
         return True
 
-    # mostly non-alphabetic noise
     letters = sum(c.isalpha() for c in t)
     if len(t) > 0 and letters / len(t) < 0.3:
         return True
 
-    # repeated characters spam (аааааа / aaaaaa)
     if re.fullmatch(r"(.)\1{4,}", t):
         return True
 
@@ -93,7 +90,6 @@ def _format_links(item: dict, seen_urls: set) -> str:
 
     add(website, "🌐")
 
-    # only one social link per item (priority: instagram -> facebook)
     if instagram:
         add(instagram, "📸")
     elif facebook:
@@ -110,6 +106,14 @@ def _inject_links(text: str, items: list, user_input: str) -> str:
     FOOTER = "💚 Small actions create real impact."
 
     text = (text or "").replace(FOOTER, "").strip()
+
+    # 🔧 FIX: strip existing link lines from LLM output
+    def _strip_links(block: str) -> str:
+        lines = block.split("\n")
+        return "\n".join(
+            l for l in lines
+            if not l.strip().startswith(("🌐", "📸", "📘"))
+        ).strip()
 
     lines = text.split("\n")
 
@@ -139,6 +143,9 @@ def _inject_links(text: str, items: list, user_input: str) -> str:
 
     for i, item in enumerate(items[:MAX_ITEMS]):
         block = org_blocks[i] if i < len(org_blocks) else ""
+
+        # 🔧 FIX: remove existing links before injecting clean ones
+        block = _strip_links(block)
 
         links = _format_links(item, seen_urls)
 
@@ -190,31 +197,25 @@ def synthesize_answer(user_input, local_data, web_data):
     return text
 
 
-# ----------------------------
-# payload
-# ----------------------------
-
 def _items_payload(items):
     rows = []
 
     for it in items[:MAX_ITEMS]:
-        rows.append({
-            "name": it.get("name") or "Unknown",
-            "description": (it.get("description") or "").strip(),
-            "tags": (it.get("tags") or "").strip(),
-            "help_types": (it.get("help_types") or "").strip(),
-            "practical_help": (it.get("practical_help") or "").strip(),
-            "website": (it.get("website") or "").strip(),
-            "instagram": (it.get("instagram") or "").strip(),
-            "facebook": (it.get("facebook") or "").strip(),
-        })
+        rows.append(
+            {
+                "name": it.get("name") or "Unknown",
+                "description": (it.get("description") or "").strip(),
+                "tags": (it.get("tags") or "").strip(),
+                "help_types": (it.get("help_types") or "").strip(),
+                "practical_help": (it.get("practical_help") or "").strip(),
+                "website": (it.get("website") or "").strip(),
+                "instagram": (it.get("instagram") or "").strip(),
+                "facebook": (it.get("facebook") or "").strip(),
+            }
+        )
 
     return json.dumps(rows, ensure_ascii=False, indent=2)
 
-
-# ----------------------------
-# main synthesis
-# ----------------------------
 
 def synthesize_advisory(
     user_input,
@@ -222,12 +223,6 @@ def synthesize_advisory(
     web_data,
     user_id=None,
 ):
-    # ----------------------------
-    # FIX 2: noise guard (NO keyword hacks)
-    # ----------------------------
-    if _is_noise_input(user_input):
-        return "I can help you find volunteering opportunities in animals, environment, or community work in Belgrade."
-
     data = local_data if local_data else web_data if web_data else []
 
     if not data:
@@ -241,6 +236,7 @@ def synthesize_advisory(
     organizations_json = _items_payload(items)
 
     memory_context = ""
+
     if user_id:
         memory_context = build_context_text(user_id)
 
