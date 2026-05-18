@@ -124,18 +124,26 @@ def _looks_actionable(text: str):
     return any(w in t for w in actionable_words)
 
 
-def _answer(user_input, local_data, web_data, replay):
+def _answer(
+    user_input,
+    local_data,
+    web_data,
+    replay,
+    user_id=None,
+):
 
     logger.info(
         f"[WF ANSWER] local={len(local_data or {})} web={bool(web_data)}"
     )
 
     if isinstance(local_data, dict):
+
         local_items = (
             local_data.get("animals", [])
             + local_data.get("environment", [])
             + local_data.get("community", [])
         )
+
     else:
         local_items = local_data or []
 
@@ -156,7 +164,8 @@ def _answer(user_input, local_data, web_data, replay):
     text = synthesize_advisory(
         user_input,
         local_items,
-        web_items
+        web_items,
+        user_id=user_id,
     )
 
     return {
@@ -170,7 +179,8 @@ def _answer(user_input, local_data, web_data, replay):
 def run_workflow(
     user_input,
     exclude_names=None,
-    exclude_urls=None
+    exclude_urls=None,
+    user_id=None,
 ):
 
     logger.info(f"[WF INPUT] {user_input}")
@@ -253,6 +263,7 @@ def run_workflow(
         has_results = total > 0
 
     elif isinstance(local_data, list):
+
         has_results = len(local_data) > 0
 
     should_skip_clarify = (
@@ -272,7 +283,8 @@ def run_workflow(
         user_input,
         local_data,
         web_data,
-        replay
+        replay,
+        user_id=user_id,
     )
 
 
