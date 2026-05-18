@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS initiatives (
 CREATE TABLE IF NOT EXISTS history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT,
-    query TEXT,
-    answer TEXT,
+    role TEXT,
+    content TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

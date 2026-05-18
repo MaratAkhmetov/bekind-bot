@@ -62,6 +62,74 @@ def analyze_intent(user_input: str):
         }
 
     # =====================================
+    # DIRECT ANIMAL DETECTION
+    # =====================================
+
+    animal_words = [
+        "animal",
+        "animals",
+        "cat",
+        "cats",
+        "dog",
+        "dogs",
+        "stray",
+        "shelter",
+        "rescue",
+    ]
+
+    if any(w in text for w in animal_words):
+
+        return {
+            "intent": "animals",
+            "category": "Animals",
+            "action_type": "mixed",
+            "needs_clarification": False,
+            "intent_confidence": 0.95,
+            "is_invalid": False,
+            "is_relevant": True,
+            "relevance_confidence": 0.95,
+            "keywords": [
+                "cats",
+                "dogs",
+                "animals",
+                "rescue"
+            ]
+        }
+
+    # =====================================
+    # DIRECT COMMUNITY DETECTION
+    # =====================================
+
+    community_words = [
+        "homeless",
+        "elderly",
+        "food bank",
+        "community",
+        "people",
+        "refugees",
+        "donate money",
+    ]
+
+    if any(w in text for w in community_words):
+
+        return {
+            "intent": "community",
+            "category": "Community",
+            "action_type": "mixed",
+            "needs_clarification": False,
+            "intent_confidence": 0.95,
+            "is_invalid": False,
+            "is_relevant": True,
+            "relevance_confidence": 0.95,
+            "keywords": [
+                "community",
+                "homeless",
+                "charity",
+                "donation"
+            ]
+        }
+
+    # =====================================
     # RANDOM GOOD DEED
     # =====================================
 

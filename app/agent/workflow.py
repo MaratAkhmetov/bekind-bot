@@ -98,15 +98,38 @@ def _fetch_web(user_input, replay):
     return web_search(q)
 
 
+def _looks_actionable(text: str):
+
+    t = (text or "").lower()
+
+    actionable_words = [
+        "donate",
+        "volunteer",
+        "help",
+        "support",
+        "shelter",
+        "community",
+        "homeless",
+        "cats",
+        "dogs",
+        "animals",
+        "environment",
+        "people",
+        "food bank",
+        "charity",
+        "ngo",
+        "rescue",
+    ]
+
+    return any(w in t for w in actionable_words)
+
+
 def _answer(user_input, local_data, web_data, replay):
 
     logger.info(
         f"[WF ANSWER] local={len(local_data or {})} web={bool(web_data)}"
     )
 
-    # =========================
-    # FIX: support structured local_data
-    # =========================
     if isinstance(local_data, dict):
         local_items = (
             local_data.get("animals", [])
@@ -118,12 +141,10 @@ def _answer(user_input, local_data, web_data, replay):
 
     web_items = _web_results_as_items(web_data)
 
-    # FIX: DO NOT flatten before dedupe incorrectly
     data = _dedupe(local_items) + web_items
 
     logger.info(f"[WF FINAL ITEMS] {len(data)}")
 
-    # UX fallback
     if not data:
         return {
             "type": "answer",
@@ -146,7 +167,11 @@ def _answer(user_input, local_data, web_data, replay):
     }
 
 
-def run_workflow(user_input, exclude_names=None, exclude_urls=None):
+def run_workflow(
+    user_input,
+    exclude_names=None,
+    exclude_urls=None
+):
 
     logger.info(f"[WF INPUT] {user_input}")
 
@@ -154,7 +179,6 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     logger.info(f"[WF INTENT] {intent}")
 
-    # FIX: soft invalid guard
     if intent.get("is_invalid") and not intent.get("needs_clarification"):
         return {
             "type": "answer",
@@ -166,7 +190,6 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "replay": None,
         }
 
-    # FIX: normalize category
     category = str(intent.get("category", "")).lower()
 
     query = " ".join(intent.get("keywords", []))
@@ -179,9 +202,6 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
 
     local_data = {}
 
-    # =========================
-    # RANDOM GOOD DEED FIXED STRUCTURE
-    # =========================
     if category == "random_good_deed":
 
         logger.info("[WF RANDOM GOOD DEED MODE]")
@@ -192,7 +212,6 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             "community": local_search("community", query, exclude_names),
         }
 
-        # ONLY check for web fallback (DO NOT mix into categories)
         total_local = (
             len(local_data["animals"])
             + len(local_data["environment"])
@@ -205,21 +224,47 @@ def run_workflow(user_input, exclude_names=None, exclude_urls=None):
             web_data = None
 
     else:
+
         local_data = local_search(category, query, exclude_names)
 
         web_data = None
 
-        # fallback enrichment allowed for all non-random cases
         if _should_fallback(local_data):
             web_data = _fetch_web(user_input, replay)
 
-    logger.info(f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}")
+    logger.info(
+        f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}"
+    )
 
-    # clarify ONLY for unclear + no data
+    # =====================================
+    # FIXED CLARIFY LOGIC
+    # =====================================
+
+    has_results = False
+
+    if isinstance(local_data, dict):
+
+        total = (
+            len(local_data.get("animals", []))
+            + len(local_data.get("environment", []))
+            + len(local_data.get("community", []))
+        )
+
+        has_results = total > 0
+
+    elif isinstance(local_data, list):
+        has_results = len(local_data) > 0
+
+    should_skip_clarify = (
+        has_results
+        or _looks_actionable(user_input)
+        or len(intent.get("keywords", [])) > 0
+    )
+
     if (
         should_clarify(intent)
-        and (not local_data or (isinstance(local_data, list) and len(local_data) == 0))
         and category == "unclear"
+        and not should_skip_clarify
     ):
         return ask_clarification(intent, user_input)
 
