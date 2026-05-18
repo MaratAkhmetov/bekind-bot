@@ -1,6 +1,3 @@
-import json
-import re
-
 from app.agent.nodes.intent import analyze_intent
 from app.agent.nodes.clarify import (
     ask_clarification,
@@ -165,12 +162,16 @@ def run_workflow(
 
     logger.info(f"[WF INTENT] {intent}")
 
-    # INVALID → always clarify
+    # INVALID
     if intent.get("is_invalid"):
         return ask_clarification(intent, user_input)
 
-    # IRRELEVANT → clarify (BUT no blocking earlier)
+    # IRRELEVANT
     if not intent.get("is_relevant", False):
+        return ask_clarification(intent, user_input)
+
+    # CLARIFICATION
+    if intent.get("needs_clarification", False):
         return ask_clarification(intent, user_input)
 
     category = str(intent.get("category", "")).lower()
@@ -201,13 +202,19 @@ def run_workflow(
             + len(local_data["community"])
         )
 
-        web_data = _fetch_web(user_input, replay) if total_local < 2 else None
+        if total_local < 2:
+            web_data = _fetch_web(user_input, replay)
+        else:
+            web_data = None
 
     else:
 
         local_data = local_search(category, query, exclude_names)
 
-        web_data = _fetch_web(user_input, replay) if _should_fallback(local_data) else None
+        if _should_fallback(local_data):
+            web_data = _fetch_web(user_input, replay)
+        else:
+            web_data = None
 
     logger.info(
         f"[WF LOCAL] {len(local_data) if isinstance(local_data, list) else 'structured'}"
